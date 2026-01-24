@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Index,
+  OneToMany,
 } from 'typeorm';
 import { UserRole } from '../../../common/enums/user-role.enum';
 import { Exclude } from 'class-transformer';
@@ -50,4 +51,47 @@ export class User {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  // Relations
+  @OneToMany('Project', 'creator')
+  createdProjects: any[];
+
+  @OneToMany('ProjectVolunteer', 'user')
+  volunteerProjects: any[];
+
+  @OneToMany('ProjectMentor', 'user')
+  mentorProjects: any[];
+
+  @OneToMany('Task', 'assignedTo')
+  assignedTasks: any[];
+
+  @OneToMany('Task', 'createdBy')
+  createdTasks: any[];
+
+  @OneToMany('TaskComment', 'user')
+  taskComments: any[];
+
+  @OneToMany('UserBadge', 'user')
+  badges: any[];
+
+  @OneToMany('Message', 'sender')
+  sentMessages: any[];
+
+  @OneToMany('Message', 'receiver')
+  receivedMessages: any[];
+
+  @OneToMany('UserSkill', 'user')
+  skills: any[];
+
+  @OneToMany('Notification', 'user')
+  notifications: any[];
+
+  @OneToMany('ActivityLog', 'user')
+  activityLogs: any[];
+
+  @OneToMany('Report', 'reporter')
+  reportsCreated: any[];
+
+  @OneToMany('Report', 'reportedUser')
+  reportsAgainst: any[];
 }

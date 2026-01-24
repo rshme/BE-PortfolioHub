@@ -1,0 +1,17 @@
+export enum ActivityType {
+  USER_REGISTERED = 'user_registered',
+  USER_LOGIN = 'user_login',
+  USER_LOGOUT = 'user_logout',
+  PROJECT_CREATED = 'project_created',
+  PROJECT_UPDATED = 'project_updated',
+  PROJECT_DELETED = 'project_deleted',
+  TASK_CREATED = 'task_created',
+  TASK_UPDATED = 'task_updated',
+  TASK_COMPLETED = 'task_completed',
+  VOLUNTEER_JOINED = 'volunteer_joined',
+  VOLUNTEER_LEFT = 'volunteer_left',
+  MENTOR_JOINED = 'mentor_joined',
+  BADGE_EARNED = 'badge_earned',
+  MESSAGE_SENT = 'message_sent',
+  COMMENT_ADDED = 'comment_added',
+}
