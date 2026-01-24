@@ -33,7 +33,7 @@ export class AuthService {
     const user = await this.validateUser(loginDto.email, loginDto.password);
 
     if (!user) {
-      throw new UnauthorizedException('Email atau password salah');
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     return this.generateAuthResponse(user);

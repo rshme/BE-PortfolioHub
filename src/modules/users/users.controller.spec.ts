@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
+import { CloudinaryService } from '../../config/cloudinary.service';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { NotFoundException } from '@nestjs/common';
 
@@ -25,6 +26,12 @@ describe('UsersController', () => {
     findByIdOrFail: jest.fn(),
   };
 
+  const mockCloudinaryService = {
+    uploadFile: jest.fn(),
+    deleteFile: jest.fn(),
+    extractPublicId: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UsersController],
@@ -32,6 +39,10 @@ describe('UsersController', () => {
         {
           provide: UsersService,
           useValue: mockUsersService,
+        },
+        {
+          provide: CloudinaryService,
+          useValue: mockCloudinaryService,
         },
       ],
     }).compile();
@@ -55,7 +66,13 @@ describe('UsersController', () => {
       const result = await usersController.getProfile(mockRequest);
 
       expect(usersService.findByIdOrFail).toHaveBeenCalledWith(mockUser.id);
-      expect(result).toEqual(mockUser);
+      expect(result).toHaveProperty('statusCode', 200);
+      expect(result).toHaveProperty('message');
+      expect(result).toHaveProperty('data');
+      expect(result.data).toMatchObject({
+        email: mockUser.email,
+        username: mockUser.username,
+      });
     });
 
     it('should return user without password', async () => {
@@ -67,7 +84,7 @@ describe('UsersController', () => {
 
       const result = await usersController.getProfile(mockRequest);
 
-      expect(result).not.toHaveProperty('password');
+      expect(result.data).not.toHaveProperty('password');
     });
 
     it('should throw NotFoundException if user not found', async () => {

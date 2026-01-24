@@ -63,11 +63,13 @@ describe('AuthController', () => {
       const result = await authController.register(registerDto);
 
       expect(authService.register).toHaveBeenCalledWith(registerDto);
-      expect(result).toEqual(mockAuthResponse);
-      expect(result).toHaveProperty('user');
-      expect(result).toHaveProperty('accessToken');
-      expect(result.user.email).toBe(registerDto.email);
-      expect(result.user.fullName).toBe(registerDto.fullName);
+      expect(result).toHaveProperty('statusCode', 201);
+      expect(result).toHaveProperty('message');
+      expect(result).toHaveProperty('data');
+      expect(result.data).toHaveProperty('user');
+      expect(result.data).toHaveProperty('accessToken');
+      expect(result.data.user.email).toBe(registerDto.email);
+      expect(result.data.user.fullName).toBe(registerDto.fullName);
     });
 
     it('should return user without password', async () => {
@@ -75,7 +77,7 @@ describe('AuthController', () => {
 
       const result = await authController.register(registerDto);
 
-      expect(result.user).not.toHaveProperty('password');
+      expect(result.data.user).not.toHaveProperty('password');
     });
 
     it('should propagate errors from service', async () => {
@@ -100,10 +102,12 @@ describe('AuthController', () => {
       const result = await authController.login(loginDto);
 
       expect(authService.login).toHaveBeenCalledWith(loginDto);
-      expect(result).toEqual(mockAuthResponse);
-      expect(result).toHaveProperty('user');
-      expect(result).toHaveProperty('accessToken');
-      expect(result.user.email).toBe(loginDto.email);
+      expect(result).toHaveProperty('statusCode', 200);
+      expect(result).toHaveProperty('message');
+      expect(result).toHaveProperty('data');
+      expect(result.data).toHaveProperty('user');
+      expect(result.data).toHaveProperty('accessToken');
+      expect(result.data.user.email).toBe(loginDto.email);
     });
 
     it('should return JWT token on successful login', async () => {
@@ -111,8 +115,8 @@ describe('AuthController', () => {
 
       const result = await authController.login(loginDto);
 
-      expect(result.accessToken).toBe('jwt-token-123');
-      expect(typeof result.accessToken).toBe('string');
+      expect(result.data.accessToken).toBe('jwt-token-123');
+      expect(typeof result.data.accessToken).toBe('string');
     });
 
     it('should return user without password', async () => {
@@ -120,7 +124,7 @@ describe('AuthController', () => {
 
       const result = await authController.login(loginDto);
 
-      expect(result.user).not.toHaveProperty('password');
+      expect(result.data.user).not.toHaveProperty('password');
     });
 
     it('should propagate errors from service', async () => {

@@ -258,7 +258,7 @@ describe('UsersService', () => {
       ).rejects.toThrow(NotFoundException);
       await expect(
         usersService.findByIdOrFail('non-existent-id'),
-      ).rejects.toThrow('User tidak ditemukan');
+      ).rejects.toThrow('User not found');
     });
 
     it('should handle database errors', async () => {

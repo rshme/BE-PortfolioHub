@@ -155,7 +155,7 @@ describe('AuthService', () => {
         UnauthorizedException,
       );
       await expect(authService.login(loginDto)).rejects.toThrow(
-        'Email atau password salah',
+        'Invalid credentials',
       );
     });
 
@@ -167,7 +167,7 @@ describe('AuthService', () => {
         UnauthorizedException,
       );
       await expect(authService.login(loginDto)).rejects.toThrow(
-        'Email atau password salah',
+        'Invalid credentials',
       );
     });
   });
