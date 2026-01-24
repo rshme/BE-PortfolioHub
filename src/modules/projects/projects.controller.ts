@@ -16,7 +16,7 @@ import {
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ProjectsService } from './projects.service';
-import { CreateProjectDto, UpdateProjectDto, QueryProjectDto } from './dto';
+import { CreateProjectDto, UpdateProjectDto, QueryProjectDto, VerifyProjectDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -144,6 +144,29 @@ export class ProjectsController {
     return {
       statusCode: HttpStatus.OK,
       message: 'Project deleted successfully',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Patch(':id/verify')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async verifyProject(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() verifyProjectDto: VerifyProjectDto,
+    @CurrentUser() user: User,
+  ): Promise<ApiResponse<Project>> {
+    const project = await this.projectsService.verifyProject(
+      id,
+      user.id,
+      verifyProjectDto.isVerified ?? true,
+    );
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: `Project ${verifyProjectDto.isVerified !== false ? 'verified' : 'unverified'} successfully`,
+      data: project,
       timestamp: new Date().toISOString(),
     };
   }

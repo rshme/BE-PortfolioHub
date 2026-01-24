@@ -96,8 +96,6 @@ export class UsersController {
     // Upload new avatar
     const result = await this.cloudinaryService.uploadFile(file, 'avatars');
 
-    console.log(result)
-
     // Update user's avatarUrl
     await this.usersService.update(req.user.id, {
       avatarUrl: result.secure_url,

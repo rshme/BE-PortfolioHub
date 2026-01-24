@@ -26,6 +26,11 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
     return;
   }
 
+  // Get admin user for verification
+  const adminUser = await userRepository.findOne({
+    where: { email: 'admin@portfoliohub.com' },
+  });
+
   // Get categories
   const webDevCategory = await categoryRepository.findOne({ where: { name: 'Web Development' } });
   const mobileCategory = await categoryRepository.findOne({ where: { name: 'Mobile Development' } });
@@ -44,6 +49,8 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
       volunteersNeeded: 8,
       startDate: new Date('2026-02-01'),
       endDate: new Date('2026-08-31'),
+      isVerified: true,
+      verifiedBy: adminUser?.id,
       links: {
         github: 'https://github.com/portfoliohub/educonnect',
         website: 'https://educonnect.demo',
@@ -57,6 +64,8 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
       volunteersNeeded: 6,
       startDate: new Date('2026-01-15'),
       endDate: new Date('2026-07-15'),
+      isVerified: true,
+      verifiedBy: adminUser?.id,
       links: {
         github: 'https://github.com/portfoliohub/greencart',
         figma: 'https://figma.com/greencart',
@@ -70,6 +79,7 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
       volunteersNeeded: 10,
       startDate: new Date('2026-01-10'),
       endDate: new Date('2026-12-31'),
+      isVerified: false,
       links: {
         github: 'https://github.com/portfoliohub/healthtracker-ai',
         docs: 'https://docs.healthtracker.ai',
@@ -83,6 +93,8 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
       volunteersNeeded: 12,
       startDate: new Date('2026-03-01'),
       endDate: new Date('2026-12-31'),
+      isVerified: true,
+      verifiedBy: adminUser?.id,
       links: {
         github: 'https://github.com/portfoliohub/codecollab',
         website: 'https://codecollab.io',
@@ -96,6 +108,7 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
       volunteersNeeded: 7,
       startDate: new Date('2026-03-15'),
       endDate: new Date('2026-11-30'),
+      isVerified: false,
       links: {
         github: 'https://github.com/portfoliohub/volunteerhub',
       },
@@ -108,6 +121,8 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
       volunteersNeeded: 5,
       startDate: new Date('2025-08-01'),
       endDate: new Date('2026-01-20'),
+      isVerified: true,
+      verifiedBy: adminUser?.id,
       links: {
         github: 'https://github.com/portfoliohub/smartfinance',
         website: 'https://smartfinance.app',

@@ -54,6 +54,16 @@ export class Project {
   @Column({ name: 'banner_url', nullable: true })
   bannerUrl?: string;
 
+  @Column({ name: 'is_verified', type: 'boolean', default: false })
+  isVerified: boolean;
+
+  @Column({ name: 'verified_by', nullable: true })
+  verifiedBy?: string;
+
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'verified_by' })
+  verifier?: User;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

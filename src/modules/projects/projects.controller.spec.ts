@@ -4,6 +4,7 @@ import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
+import { VerifyProjectDto } from './dto/verify-project.dto';
 import { ProjectStatus } from '../../common/enums/project-status.enum';
 import { UserRole } from '../../common/enums/user-role.enum';
 
@@ -17,6 +18,7 @@ describe('ProjectsController', () => {
     findOne: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
+    verifyProject: jest.fn(),
   };
 
   const mockUser = {
@@ -25,8 +27,16 @@ describe('ProjectsController', () => {
     role: UserRole.PROJECT_OWNER,
   };
 
+  const mockAdminUser = {
+    id: 'admin-123',
+    email: 'admin@example.com',
+    role: UserRole.ADMIN,
+  };
+
   const mockProject = {
     id: 'project-123',
+    isVerified: false,
+    verifiedBy: null,
     name: 'Test Project',
     description: 'Test Description',
     status: ProjectStatus.ACTIVE,
@@ -61,6 +71,8 @@ describe('ProjectsController', () => {
         name: 'Test Project',
         description: 'Test Description',
         volunteersNeeded: 5,
+        categoryIds: ['cat-123'],
+        skillIds: ['skill-123'],
       };
 
       mockProjectsService.create.mockResolvedValue(mockProject);
@@ -135,7 +147,8 @@ describe('ProjectsController', () => {
 
       expect(result.statusCode).toBe(HttpStatus.OK);
       expect(result.message).toBe('Project updated successfully');
-      expect(result.data.name).toBe('Updated Project');
+      expect(result.data).toBeDefined();
+      expect(result.data!.name).toBe('Updated Project');
       expect(result.timestamp).toBeDefined();
       expect(service.update).toHaveBeenCalledWith(
         'project-123',
@@ -161,6 +174,66 @@ describe('ProjectsController', () => {
         'project-123',
         mockUser.id,
         mockUser.role,
+      );
+    });
+  });
+
+  describe('verifyProject', () => {
+    it('should verify a project', async () => {
+      const verifyDto: VerifyProjectDto = { isVerified: true };
+      const verifiedProject = {
+        ...mockProject,
+        isVerified: true,
+        verifiedBy: 'admin-123',
+      };
+
+      mockProjectsService.verifyProject.mockResolvedValue(verifiedProject);
+
+      const result = await controller.verifyProject(
+        'project-123',
+        verifyDto,
+        mockAdminUser as any,
+      );
+
+      expect(result.statusCode).toBe(HttpStatus.OK);
+      expect(result.message).toBe('Project verified successfully');
+      expect(result.data).toBeDefined();
+      expect(result.data!.isVerified).toBe(true);
+      expect(result.data!.verifiedBy).toBe('admin-123');
+      expect(result.timestamp).toBeDefined();
+      expect(service.verifyProject).toHaveBeenCalledWith(
+        'project-123',
+        mockAdminUser.id,
+        true,
+      );
+    });
+
+    it('should unverify a project', async () => {
+      const verifyDto: VerifyProjectDto = { isVerified: false };
+      const unverifiedProject = {
+        ...mockProject,
+        isVerified: false,
+        verifiedBy: null,
+      };
+
+      mockProjectsService.verifyProject.mockResolvedValue(unverifiedProject);
+
+      const result = await controller.verifyProject(
+        'project-123',
+        verifyDto,
+        mockAdminUser as any,
+      );
+
+      expect(result.statusCode).toBe(HttpStatus.OK);
+      expect(result.message).toBe('Project unverified successfully');
+      expect(result.data).toBeDefined();
+      expect(result.data!.isVerified).toBe(false);
+      expect(result.data!.verifiedBy).toBe(null);
+      expect(result.timestamp).toBeDefined();
+      expect(service.verifyProject).toHaveBeenCalledWith(
+        'project-123',
+        mockAdminUser.id,
+        false,
       );
     });
   });

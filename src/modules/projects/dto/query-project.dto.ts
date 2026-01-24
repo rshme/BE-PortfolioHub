@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsString,
   IsUUID,
+  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ProjectStatus } from '../../../common/enums/project-status.enum';
@@ -41,6 +42,13 @@ export class QueryProjectDto {
   @IsOptional()
   @IsUUID('4')
   creatorId?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['true', 'false', '1', '0'], {
+    message: 'isVerified must be one of: true, false, 1, or 0',
+  })
+  isVerified?: string;
 
   @IsOptional()
   @IsString()

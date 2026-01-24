@@ -89,9 +89,20 @@ export class ProjectsService {
       categoryId,
       skillId,
       creatorId,
+      isVerified,
       sortBy = 'createdAt',
       sortOrder = 'DESC',
     } = queryDto;
+
+    // Convert string isVerified to boolean
+    let isVerifiedBoolean: boolean | undefined;
+    if (isVerified !== undefined) {
+      if (isVerified === 'true' || isVerified === '1') {
+        isVerifiedBoolean = true;
+      } else if (isVerified === 'false' || isVerified === '0') {
+        isVerifiedBoolean = false;
+      }
+    }
 
     const skip = (page - 1) * limit;
 
@@ -99,6 +110,7 @@ export class ProjectsService {
     const queryBuilder = this.projectRepository
       .createQueryBuilder('project')
       .leftJoinAndSelect('project.creator', 'creator')
+      .leftJoinAndSelect('project.verifier', 'verifier')
       .leftJoin('project.volunteers', 'volunteers')
       .leftJoinAndSelect('project.categories', 'projectCategories')
       .leftJoinAndSelect('projectCategories.category', 'category')
@@ -107,6 +119,7 @@ export class ProjectsService {
       .addSelect('COUNT(DISTINCT volunteers.id)', 'volunteerCount')
       .groupBy('project.id')
       .addGroupBy('creator.id')
+      .addGroupBy('verifier.id')
       .addGroupBy('projectCategories.projectId')
       .addGroupBy('projectCategories.categoryId')
       .addGroupBy('category.id')
@@ -138,11 +151,17 @@ export class ProjectsService {
       queryBuilder.andWhere('skill.id = :skillId', { skillId });
     }
 
+    if (isVerifiedBoolean !== undefined) {
+      queryBuilder.andWhere('project.isVerified = :isVerifiedBoolean', { isVerifiedBoolean });
+    }
+
     // Apply sorting
     queryBuilder.orderBy(`project.${sortBy}`, sortOrder);
 
-    // Get total count
-    const total = await queryBuilder.getCount();
+    // Get total count before pagination (need to count distinct project IDs due to groupBy)
+    const countQuery = queryBuilder.clone();
+    const countResult = await countQuery.select('COUNT(DISTINCT project.id)', 'total').getRawOne();
+    const total = parseInt(countResult?.total || '0');
 
     // Apply pagination
     queryBuilder.skip(skip).take(limit);
@@ -190,6 +209,7 @@ export class ProjectsService {
       where: { id },
       relations: [
         'creator',
+        'verifier',
         'volunteers',
         'volunteers.user',
         'mentors',
@@ -507,6 +527,31 @@ export class ProjectsService {
       project.categories = null;
     }
 
+    // Format verifier - extract only necessary data
+    if (project.verifier) {
+      project.verifier = this.formatUserData(project.verifier);
+    }
+
     return project;
+  }
+
+  /**
+   * Verify or unverify a project (Admin only)
+   */
+  async verifyProject(
+    projectId: string,
+    verifierId: string,
+    isVerified: boolean,
+  ): Promise<Project> {
+    const project = await this.findOneRaw(projectId);
+
+    // Update verification status
+    project.isVerified = isVerified;
+    project.verifiedBy = isVerified ? verifierId : undefined;
+
+    await this.projectRepository.save(project);
+
+    // Return formatted project with all relations
+    return this.findOne(projectId);
   }
 }
