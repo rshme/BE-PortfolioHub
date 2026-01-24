@@ -20,6 +20,7 @@ export class CloudinaryService {
   async uploadFile(
     file: Express.Multer.File,
     folder: string = 'avatars',
+    transformation?: any[],
   ): Promise<CloudinaryResponse> {
     // Validate file type
     const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
@@ -35,15 +36,17 @@ export class CloudinaryService {
       throw new BadRequestException('File size must not exceed 5MB');
     }
 
+    const defaultTransformation = [
+      { width: 400, height: 400, crop: 'fill', gravity: 'face' },
+      { quality: 'auto', fetch_format: 'auto' },
+    ];
+
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder,
           resource_type: 'image',
-          transformation: [
-            { width: 400, height: 400, crop: 'fill', gravity: 'face' },
-            { quality: 'auto', fetch_format: 'auto' },
-          ],
+          transformation: transformation || defaultTransformation,
         },
         (error: UploadApiErrorResponse, result: UploadApiResponse) => {
           if (error) {
@@ -65,6 +68,32 @@ export class CloudinaryService {
 
       streamifier.createReadStream(file.buffer).pipe(uploadStream);
     });
+  }
+
+  /**
+   * Upload project banner with specific transformation
+   */
+  async uploadProjectBanner(
+    file: Express.Multer.File,
+  ): Promise<CloudinaryResponse> {
+    const transformation = [
+      { width: 1200, height: 630, crop: 'fill', gravity: 'center' },
+      { quality: 'auto:good', fetch_format: 'auto' },
+    ];
+    return this.uploadFile(file, 'projects/banners', transformation);
+  }
+
+  /**
+   * Upload project image with specific transformation
+   */
+  async uploadProjectImage(
+    file: Express.Multer.File,
+  ): Promise<CloudinaryResponse> {
+    const transformation = [
+      { width: 800, height: 600, crop: 'limit' },
+      { quality: 'auto:good', fetch_format: 'auto' },
+    ];
+    return this.uploadFile(file, 'projects/images', transformation);
   }
 
   /**
