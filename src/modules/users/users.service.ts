@@ -1,9 +1,9 @@
-import { 
-  Injectable, 
-  ConflictException, 
-  NotFoundException, 
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
   BadRequestException,
-  UnauthorizedException 
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
@@ -25,7 +25,9 @@ export class UsersService {
     // Check both email and username in parallel for better performance
     const [existingUserByEmail, existingUserByUsername] = await Promise.all([
       this.usersRepository.findOne({ where: { email: createUserDto.email } }),
-      this.usersRepository.findOne({ where: { username: createUserDto.username } }),
+      this.usersRepository.findOne({
+        where: { username: createUserDto.username },
+      }),
     ]);
 
     // Check email conflict first
@@ -51,7 +53,10 @@ export class UsersService {
   /**
    * Find all users (with pagination support)
    */
-  async findAll(page: number = 1, limit: number = 10): Promise<{ data: User[]; total: number; page: number; limit: number }> {
+  async findAll(
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{ data: User[]; total: number; page: number; limit: number }> {
     const [data, total] = await this.usersRepository.findAndCount({
       skip: (page - 1) * limit,
       take: limit,
@@ -115,7 +120,7 @@ export class UsersService {
       const existingUserByEmail = await this.usersRepository.findOne({
         where: { email: updateUserDto.email, id: Not(id) },
       });
-      
+
       if (existingUserByEmail) {
         throw new ConflictException('Email is already in use');
       }
@@ -126,7 +131,7 @@ export class UsersService {
       const existingUserByUsername = await this.usersRepository.findOne({
         where: { username: updateUserDto.username, id: Not(id) },
       });
-      
+
       if (existingUserByUsername) {
         throw new ConflictException('Username is already in use');
       }
@@ -141,7 +146,10 @@ export class UsersService {
   /**
    * Update user password
    */
-  async updatePassword(id: string, updatePasswordDto: UpdatePasswordDto): Promise<void> {
+  async updatePassword(
+    id: string,
+    updatePasswordDto: UpdatePasswordDto,
+  ): Promise<void> {
     const user = await this.usersRepository.findOne({
       where: { id },
       select: ['id', 'password'],
@@ -152,7 +160,10 @@ export class UsersService {
     }
 
     // Verify old password
-    const isPasswordValid = await bcrypt.compare(updatePasswordDto.oldPassword, user.password);
+    const isPasswordValid = await bcrypt.compare(
+      updatePasswordDto.oldPassword,
+      user.password,
+    );
     if (!isPasswordValid) {
       throw new UnauthorizedException('Current password is incorrect');
     }
@@ -175,9 +186,13 @@ export class UsersService {
   /**
    * Search users by keyword (username, email, or fullName)
    */
-  async search(keyword: string, page: number = 1, limit: number = 10): Promise<{ data: User[]; total: number; page: number; limit: number }> {
+  async search(
+    keyword: string,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{ data: User[]; total: number; page: number; limit: number }> {
     const queryBuilder = this.usersRepository.createQueryBuilder('user');
-    
+
     const [data, total] = await queryBuilder
       .where('user.username ILIKE :keyword', { keyword: `%${keyword}%` })
       .orWhere('user.email ILIKE :keyword', { keyword: `%${keyword}%` })

@@ -6,7 +6,7 @@ export class JaccardSimilarity {
   /**
    * Calculate Jaccard index between two sets
    * Formula: J(A, B) = |A ∩ B| / |A ∪ B|
-   * 
+   *
    * @param setA - First set of items
    * @param setB - Second set of items
    * @returns Jaccard coefficient between 0 and 1
@@ -37,7 +37,7 @@ export class JaccardSimilarity {
 
   /**
    * Calculate intersection count between two sets
-   * 
+   *
    * @param setA - First set of items
    * @param setB - Second set of items
    * @returns Number of common items
@@ -55,7 +55,7 @@ export class JaccardSimilarity {
 
   /**
    * Calculate union count between two sets
-   * 
+   *
    * @param setA - First set of items
    * @param setB - Second set of items
    * @returns Number of unique items in both sets
@@ -67,7 +67,7 @@ export class JaccardSimilarity {
 
   /**
    * Get common items between two sets
-   * 
+   *
    * @param setA - First set of items
    * @param setB - Second set of items
    * @returns Array of common items
@@ -82,7 +82,7 @@ export class JaccardSimilarity {
   /**
    * Calculate weighted Jaccard similarity
    * Useful when skills have different importance levels
-   * 
+   *
    * @param setA - First set of items with weights
    * @param setB - Second set of items with weights
    * @returns Weighted Jaccard coefficient
@@ -102,10 +102,7 @@ export class JaccardSimilarity {
     const weightsA = new Map(setA.map((item) => [item.id, item.weight]));
     const weightsB = new Map(setB.map((item) => [item.id, item.weight]));
 
-    const allIds = new Set([
-      ...weightsA.keys(),
-      ...weightsB.keys(),
-    ]);
+    const allIds = new Set([...weightsA.keys(), ...weightsB.keys()]);
 
     let intersectionSum = 0;
     let unionSum = 0;

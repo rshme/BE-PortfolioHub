@@ -7,10 +7,7 @@ import { User } from './entities/user.entity';
 import { CloudinaryService } from '../../config/cloudinary.service';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([User]),
-    ConfigModule,
-  ],
+  imports: [TypeOrmModule.forFeature([User]), ConfigModule],
   controllers: [UsersController],
   providers: [UsersService, CloudinaryService],
   exports: [UsersService],

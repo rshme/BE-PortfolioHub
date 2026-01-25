@@ -12,9 +12,7 @@ export const dataSourceOptions: DataSourceOptions = {
   username: process.env.DATABASE_USERNAME || 'postgres',
   password: process.env.DATABASE_PASSWORD || 'postgres',
   database: process.env.DATABASE_NAME || 'portfoliohub',
-  entities: isProduction
-    ? ['dist/**/*.entity.js']
-    : ['src/**/*.entity.ts'],
+  entities: isProduction ? ['dist/**/*.entity.js'] : ['src/**/*.entity.ts'],
   migrations: isProduction
     ? ['dist/database/migrations/*.js']
     : ['src/database/migrations/*.ts'],

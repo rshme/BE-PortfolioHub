@@ -25,7 +25,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message = responseObj.message || exception.message;
       error = responseObj.error || this.getErrorName(status);
     } else {
-      message = exceptionResponse as string;
+      message = exceptionResponse;
       error = this.getErrorName(status);
     }
 
@@ -43,7 +43,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
     response.status(status).json(errorResponse);
   }
 
-  private sanitizeErrorMessage(message: string | string[], status: number): string | string[] {
+  private sanitizeErrorMessage(
+    message: string | string[],
+    status: number,
+  ): string | string[] {
     // If it's a validation error array, keep it as is (class-validator messages are safe)
     if (Array.isArray(message)) {
       return message;
@@ -70,7 +73,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
     ];
 
     const messageLower = message.toLowerCase();
-    const isSafeMessage = safeErrorPatterns.some(pattern => messageLower.includes(pattern));
+    const isSafeMessage = safeErrorPatterns.some((pattern) =>
+      messageLower.includes(pattern),
+    );
 
     if (isSafeMessage) {
       return message;

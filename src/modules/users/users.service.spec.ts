@@ -142,8 +142,14 @@ describe('UsersService', () => {
 
       mockRepository.findOne.mockResolvedValue(null);
       (bcrypt.hash as jest.Mock).mockResolvedValue('$2b$10$hashedPassword');
-      mockRepository.create.mockReturnValue({ ...mockUser, role: UserRole.MENTOR });
-      mockRepository.save.mockResolvedValue({ ...mockUser, role: UserRole.MENTOR });
+      mockRepository.create.mockReturnValue({
+        ...mockUser,
+        role: UserRole.MENTOR,
+      });
+      mockRepository.save.mockResolvedValue({
+        ...mockUser,
+        role: UserRole.MENTOR,
+      });
 
       const result = await usersService.create(createUserDtoWithRole);
 
@@ -203,9 +209,9 @@ describe('UsersService', () => {
     it('should handle database errors', async () => {
       mockRepository.findOne.mockRejectedValue(new Error('Database error'));
 
-      await expect(
-        usersService.findByUsername('testuser'),
-      ).rejects.toThrow('Database error');
+      await expect(usersService.findByUsername('testuser')).rejects.toThrow(
+        'Database error',
+      );
     });
   });
 

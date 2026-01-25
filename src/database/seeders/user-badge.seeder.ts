@@ -70,7 +70,9 @@ export async function seedUserBadges(dataSource: DataSource): Promise<void> {
   const firstStepsBadge = badgeMap.get('First Steps');
   if (firstStepsBadge) {
     const activeVolunteers = users.filter(
-      (u) => u.role === UserRole.VOLUNTEER && ['alicevolunteer', 'bobdev', 'charliebackend'].includes(u.username),
+      (u) =>
+        u.role === UserRole.VOLUNTEER &&
+        ['alicevolunteer', 'bobdev', 'charliebackend'].includes(u.username),
     );
     for (const volunteer of activeVolunteers) {
       userBadges.push({
@@ -115,8 +117,8 @@ export async function seedUserBadges(dataSource: DataSource): Promise<void> {
   // Award "Task Master" to senior volunteers
   const taskMasterBadge = badgeMap.get('Task Master');
   if (taskMasterBadge) {
-    const seniorVolunteers = users.filter(
-      (u) => ['alicevolunteer', 'charliebackend'].includes(u.username),
+    const seniorVolunteers = users.filter((u) =>
+      ['alicevolunteer', 'charliebackend'].includes(u.username),
     );
     for (const volunteer of seniorVolunteers) {
       userBadges.push({
@@ -131,8 +133,8 @@ export async function seedUserBadges(dataSource: DataSource): Promise<void> {
   // Award "Code Warrior" to experienced developers
   const codeWarriorBadge = badgeMap.get('Code Warrior');
   if (codeWarriorBadge) {
-    const experiencedDevs = users.filter(
-      (u) => ['johnmentor', 'alicevolunteer'].includes(u.username),
+    const experiencedDevs = users.filter((u) =>
+      ['johnmentor', 'alicevolunteer'].includes(u.username),
     );
     for (const dev of experiencedDevs) {
       userBadges.push({
@@ -175,8 +177,8 @@ export async function seedUserBadges(dataSource: DataSource): Promise<void> {
   // Award "Innovation Champion" to admin and experienced users
   const innovationBadge = badgeMap.get('Innovation Champion');
   if (innovationBadge) {
-    const innovators = users.filter(
-      (u) => ['admin', 'johnmentor', 'gracefounder'].includes(u.username),
+    const innovators = users.filter((u) =>
+      ['admin', 'johnmentor', 'gracefounder'].includes(u.username),
     );
     for (const innovator of innovators) {
       userBadges.push({
@@ -210,7 +212,9 @@ export async function seedUserBadges(dataSource: DataSource): Promise<void> {
         (ub) => ub.userId === user.id,
       ).length;
       if (userBadgeCount > 0) {
-        console.log(`   - ${user.fullName} (${user.username}): ${userBadgeCount} badges`);
+        console.log(
+          `   - ${user.fullName} (${user.username}): ${userBadgeCount} badges`,
+        );
       }
     }
   } else {

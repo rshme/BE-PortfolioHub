@@ -25,6 +25,9 @@ export class Category {
   createdAt: Date;
 
   // Relations
-  @OneToMany(() => ProjectCategory, (projectCategory) => projectCategory.category)
+  @OneToMany(
+    () => ProjectCategory,
+    (projectCategory) => projectCategory.category,
+  )
   projects: ProjectCategory[];
 }

@@ -11,7 +11,9 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  async register(@Body() registerDto: RegisterDto): Promise<ApiResponse<AuthResponse>> {
+  async register(
+    @Body() registerDto: RegisterDto,
+  ): Promise<ApiResponse<AuthResponse>> {
     const result = await this.authService.register(registerDto);
     return {
       statusCode: HttpStatus.CREATED,

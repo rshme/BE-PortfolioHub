@@ -172,9 +172,7 @@ export class SimilarityService {
     }
 
     // Sort by similarity score (descending)
-    return similarities.sort(
-      (a, b) => b.similarityScore - a.similarityScore,
-    );
+    return similarities.sort((a, b) => b.similarityScore - a.similarityScore);
   }
 
   /**
@@ -187,9 +185,8 @@ export class SimilarityService {
   ): Promise<ProjectRecommendation[]> {
     // Check cache first
     const cacheKey = `${this.CACHE_PREFIX}:${userId}:${limit}:${minSimilarity}`;
-    const cached = await this.cacheManager.get<ProjectRecommendation[]>(
-      cacheKey,
-    );
+    const cached =
+      await this.cacheManager.get<ProjectRecommendation[]>(cacheKey);
 
     if (cached) {
       return cached;
@@ -240,7 +237,13 @@ export class SimilarityService {
     const projectIds = topSimilarities.map((s) => s.projectId);
     const projects = await this.projectRepository.find({
       where: { id: In(projectIds) },
-      relations: ['creator', 'skills', 'skills.skill', 'categories', 'categories.category'],
+      relations: [
+        'creator',
+        'skills',
+        'skills.skill',
+        'categories',
+        'categories.category',
+      ],
     });
 
     // Combine similarity scores with project details

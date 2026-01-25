@@ -18,7 +18,10 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
 
   // Get users for project ownership
   const projectOwners = await userRepository.find({
-    where: [{ email: 'owner@portfoliohub.com' }, { email: 'owner2@portfoliohub.com' }],
+    where: [
+      { email: 'owner@portfoliohub.com' },
+      { email: 'owner2@portfoliohub.com' },
+    ],
   });
 
   if (projectOwners.length === 0) {
@@ -32,18 +35,29 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
   });
 
   // Get categories
-  const webDevCategory = await categoryRepository.findOne({ where: { name: 'Web Development' } });
-  const mobileCategory = await categoryRepository.findOne({ where: { name: 'Mobile Development' } });
-  const dataCategory = await categoryRepository.findOne({ where: { name: 'Data Science' } });
-  const openSourceCategory = await categoryRepository.findOne({ where: { name: 'Open Source' } });
-  const socialImpactCategory = await categoryRepository.findOne({ where: { name: 'Social Impact' } });
+  const webDevCategory = await categoryRepository.findOne({
+    where: { name: 'Web Development' },
+  });
+  const mobileCategory = await categoryRepository.findOne({
+    where: { name: 'Mobile Development' },
+  });
+  const dataCategory = await categoryRepository.findOne({
+    where: { name: 'Data Science' },
+  });
+  const openSourceCategory = await categoryRepository.findOne({
+    where: { name: 'Open Source' },
+  });
+  const socialImpactCategory = await categoryRepository.findOne({
+    where: { name: 'Social Impact' },
+  });
 
   const [owner1, owner2] = projectOwners;
 
   const projects = [
     {
       name: 'EduConnect - Online Learning Platform',
-      description: 'A comprehensive e-learning platform that connects students with quality educational resources and interactive courses. Features include live classes, assignments, progress tracking, and community forums.',
+      description:
+        'A comprehensive e-learning platform that connects students with quality educational resources and interactive courses. Features include live classes, assignments, progress tracking, and community forums.',
       creator: owner1,
       status: ProjectStatus.ACTIVE,
       volunteersNeeded: 8,
@@ -58,7 +72,8 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
     },
     {
       name: 'GreenCart - Sustainable Shopping App',
-      description: 'Mobile marketplace connecting eco-conscious consumers with sustainable local businesses. Track your carbon footprint, earn rewards for green choices, and discover eco-friendly alternatives.',
+      description:
+        'Mobile marketplace connecting eco-conscious consumers with sustainable local businesses. Track your carbon footprint, earn rewards for green choices, and discover eco-friendly alternatives.',
       creator: owner2,
       status: ProjectStatus.IN_PROGRESS,
       volunteersNeeded: 6,
@@ -73,7 +88,8 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
     },
     {
       name: 'HealthTracker AI - Personal Health Assistant',
-      description: 'AI-powered health monitoring application that analyzes user health data, provides personalized recommendations, and predicts potential health risks using machine learning algorithms.',
+      description:
+        'AI-powered health monitoring application that analyzes user health data, provides personalized recommendations, and predicts potential health risks using machine learning algorithms.',
       creator: owner1,
       status: ProjectStatus.IN_PROGRESS,
       volunteersNeeded: 10,
@@ -87,7 +103,8 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
     },
     {
       name: 'CodeCollab - Real-time Collaborative IDE',
-      description: 'Open-source web-based IDE for remote pair programming and collaborative coding. Features include real-time code sync, video chat, code review tools, and integrated version control.',
+      description:
+        'Open-source web-based IDE for remote pair programming and collaborative coding. Features include real-time code sync, video chat, code review tools, and integrated version control.',
       creator: owner2,
       status: ProjectStatus.ACTIVE,
       volunteersNeeded: 12,
@@ -102,7 +119,8 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
     },
     {
       name: 'VolunteerHub - Community Service Platform',
-      description: 'Platform connecting volunteers with local non-profit organizations. Features include event management, volunteer matching, impact tracking, and community recognition system.',
+      description:
+        'Platform connecting volunteers with local non-profit organizations. Features include event management, volunteer matching, impact tracking, and community recognition system.',
       creator: owner1,
       status: ProjectStatus.DRAFT,
       volunteersNeeded: 7,
@@ -115,7 +133,8 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
     },
     {
       name: 'SmartFinance - Personal Budget Manager',
-      description: 'Intelligent personal finance application that helps users track expenses, create budgets, set financial goals, and get AI-powered savings recommendations.',
+      description:
+        'Intelligent personal finance application that helps users track expenses, create budgets, set financial goals, and get AI-powered savings recommendations.',
       creator: owner2,
       status: ProjectStatus.COMPLETED,
       volunteersNeeded: 5,

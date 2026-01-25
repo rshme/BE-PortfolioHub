@@ -19,7 +19,9 @@ export class Project {
   @Column({ name: 'creator_id' })
   creatorId: string;
 
-  @ManyToOne(() => User, (user) => user.createdProjects, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.createdProjects, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'creator_id' })
   creator: User;
 

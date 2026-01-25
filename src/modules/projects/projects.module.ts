@@ -9,6 +9,7 @@ import { ProjectSkill } from './entities/project-skill.entity';
 import { ProjectMentor } from './entities/project-mentor.entity';
 import { ProjectVolunteer } from './entities/project-volunteer.entity';
 import { UserSkill } from '../users/entities/user-skill.entity';
+import { Task } from '../tasks/entities/task.entity';
 import { CloudinaryService } from '../../config/cloudinary.service';
 
 @Module({
@@ -20,6 +21,7 @@ import { CloudinaryService } from '../../config/cloudinary.service';
       ProjectMentor,
       ProjectVolunteer,
       UserSkill,
+      Task,
     ]),
   ],
   controllers: [ProjectsController],

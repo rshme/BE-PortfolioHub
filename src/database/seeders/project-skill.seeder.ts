@@ -3,7 +3,9 @@ import { Project } from '../../modules/projects/entities/project.entity';
 import { Skill } from '../../modules/skills/entities/skill.entity';
 import { ProjectSkill } from '../../modules/projects/entities/project-skill.entity';
 
-export const seedProjectSkills = async (dataSource: DataSource): Promise<void> => {
+export const seedProjectSkills = async (
+  dataSource: DataSource,
+): Promise<void> => {
   const projectSkillRepository = dataSource.getRepository(ProjectSkill);
   const projectRepository = dataSource.getRepository(Project);
   const skillRepository = dataSource.getRepository(Skill);
@@ -24,20 +26,32 @@ export const seedProjectSkills = async (dataSource: DataSource): Promise<void> =
   // Get all skills
   const react = await skillRepository.findOne({ where: { name: 'React' } });
   const nodejs = await skillRepository.findOne({ where: { name: 'Node.js' } });
-  const typescript = await skillRepository.findOne({ where: { name: 'TypeScript' } });
-  const postgresql = await skillRepository.findOne({ where: { name: 'PostgreSQL' } });
-  const reactNative = await skillRepository.findOne({ where: { name: 'React Native' } });
+  const typescript = await skillRepository.findOne({
+    where: { name: 'TypeScript' },
+  });
+  const postgresql = await skillRepository.findOne({
+    where: { name: 'PostgreSQL' },
+  });
+  const reactNative = await skillRepository.findOne({
+    where: { name: 'React Native' },
+  });
   const mongodb = await skillRepository.findOne({ where: { name: 'MongoDB' } });
   const python = await skillRepository.findOne({ where: { name: 'Python' } });
-  const tensorflow = await skillRepository.findOne({ where: { name: 'TensorFlow' } });
+  const tensorflow = await skillRepository.findOne({
+    where: { name: 'TensorFlow' },
+  });
   const flutter = await skillRepository.findOne({ where: { name: 'Flutter' } });
   const nestjs = await skillRepository.findOne({ where: { name: 'NestJS' } });
   const nextjs = await skillRepository.findOne({ where: { name: 'Next.js' } });
-  const tailwind = await skillRepository.findOne({ where: { name: 'Tailwind CSS' } });
+  const tailwind = await skillRepository.findOne({
+    where: { name: 'Tailwind CSS' },
+  });
   const vue = await skillRepository.findOne({ where: { name: 'Vue.js' } });
   const laravel = await skillRepository.findOne({ where: { name: 'Laravel' } });
   const mysql = await skillRepository.findOne({ where: { name: 'MySQL' } });
-  const websocket = await skillRepository.findOne({ where: { name: 'WebSocket' } });
+  const websocket = await skillRepository.findOne({
+    where: { name: 'WebSocket' },
+  });
   const rest = await skillRepository.findOne({ where: { name: 'REST API' } });
   const graphql = await skillRepository.findOne({ where: { name: 'GraphQL' } });
   const docker = await skillRepository.findOne({ where: { name: 'Docker' } });
@@ -121,7 +135,7 @@ export const seedProjectSkills = async (dataSource: DataSource): Promise<void> =
   let totalCreated = 0;
 
   for (const mapping of projectSkillMappings) {
-    const project = projects.find(p => p.name === mapping.projectName);
+    const project = projects.find((p) => p.name === mapping.projectName);
     if (!project) continue;
 
     for (const { skill, isMandatory } of mapping.skills) {
@@ -138,5 +152,7 @@ export const seedProjectSkills = async (dataSource: DataSource): Promise<void> =
     }
   }
 
-  console.log(`✅ Successfully linked ${totalCreated} project-skill relationships`);
+  console.log(
+    `✅ Successfully linked ${totalCreated} project-skill relationships`,
+  );
 };

@@ -1,9 +1,4 @@
-import {
-  Entity,
-  PrimaryColumn,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, PrimaryColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Project } from './project.entity';
 
 @Entity('project_categories')

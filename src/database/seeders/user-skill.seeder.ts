@@ -141,21 +141,10 @@ export async function seedUserSkills(dataSource: DataSource): Promise<void> {
     ],
 
     // Sarah Owner - Product Manager
-    sarahowner: [
-      'Project Management',
-      'Agile',
-      'UI/UX Design',
-      'Figma',
-      'Git',
-    ],
+    sarahowner: ['Project Management', 'Agile', 'UI/UX Design', 'Figma', 'Git'],
 
     // Grace Founder - Startup Founder
-    gracefounder: [
-      'Project Management',
-      'Agile',
-      'Leadership',
-      'Git',
-    ],
+    gracefounder: ['Project Management', 'Agile', 'Leadership', 'Git'],
   };
 
   const userSkills: Partial<UserSkill>[] = [];
@@ -173,7 +162,9 @@ export async function seedUserSkills(dataSource: DataSource): Promise<void> {
           skillId: skillId,
         });
       } else {
-        console.log(`⚠️  Skill "${skillName}" not found for user ${user.username}`);
+        console.log(
+          `⚠️  Skill "${skillName}" not found for user ${user.username}`,
+        );
       }
     }
   }
@@ -190,7 +181,9 @@ export async function seedUserSkills(dataSource: DataSource): Promise<void> {
         (us) => us.userId === user.id,
       ).length;
       if (userSkillCount > 0) {
-        console.log(`   - ${user.fullName} (${user.username}): ${userSkillCount} skills`);
+        console.log(
+          `   - ${user.fullName} (${user.username}): ${userSkillCount} skills`,
+        );
       }
     }
   } else {

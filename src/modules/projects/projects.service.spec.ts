@@ -406,7 +406,10 @@ describe('ProjectsService - Mentor & Volunteer Operations', () => {
         const pendingMentors = [mockMentor];
         mockMentorRepository.find.mockResolvedValue(pendingMentors);
 
-        const result = await service.getProjectMentors('project-123', MentorStatus.PENDING);
+        const result = await service.getProjectMentors(
+          'project-123',
+          MentorStatus.PENDING,
+        );
 
         expect(result).toEqual(pendingMentors);
         expect(result).toHaveLength(1);
@@ -507,9 +510,12 @@ describe('ProjectsService - Mentor & Volunteer Operations', () => {
         );
 
         expect(result.status).toBe(VolunteerStatus.ACTIVE);
-        expect(mockProjectRepository.update).toHaveBeenCalledWith('project-123', {
-          volunteerCount: 1,
-        });
+        expect(mockProjectRepository.update).toHaveBeenCalledWith(
+          'project-123',
+          {
+            volunteerCount: 1,
+          },
+        );
       });
 
       it('should throw NotFoundException if invitation not found', async () => {
@@ -668,9 +674,12 @@ describe('ProjectsService - Mentor & Volunteer Operations', () => {
         );
 
         expect(mockVolunteerRepository.save).toHaveBeenCalled();
-        expect(mockProjectRepository.update).toHaveBeenCalledWith('project-123', {
-          volunteerCount: 0,
-        });
+        expect(mockProjectRepository.update).toHaveBeenCalledWith(
+          'project-123',
+          {
+            volunteerCount: 0,
+          },
+        );
       });
 
       it('should throw ForbiddenException if not authorized', async () => {
@@ -740,7 +749,10 @@ describe('ProjectsService - Mentor & Volunteer Operations', () => {
         const pendingVolunteers = [mockVolunteer];
         mockVolunteerRepository.find.mockResolvedValue(pendingVolunteers);
 
-        const result = await service.getProjectVolunteers('project-123', VolunteerStatus.PENDING);
+        const result = await service.getProjectVolunteers(
+          'project-123',
+          VolunteerStatus.PENDING,
+        );
 
         expect(result).toEqual(pendingVolunteers);
         expect(result).toHaveLength(1);

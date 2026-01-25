@@ -22,7 +22,12 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { UpdateUserDto, UpdatePasswordDto, UserResponseDto, PublicUserResponseDto } from './dto';
+import {
+  UpdateUserDto,
+  UpdatePasswordDto,
+  UserResponseDto,
+  PublicUserResponseDto,
+} from './dto';
 import { plainToInstance } from 'class-transformer';
 import { CloudinaryService } from '../../config/cloudinary.service';
 import { ApiResponse } from '../../common/interfaces/api-response.interface';
@@ -154,15 +159,17 @@ export class UsersController {
   async findAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-  ): Promise<ApiResponse<{
-    users: PublicUserResponseDto[];
-    pagination: {
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-    };
-  }>> {
+  ): Promise<
+    ApiResponse<{
+      users: PublicUserResponseDto[];
+      pagination: {
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      };
+    }>
+  > {
     const result = await this.usersService.findAll(page, limit);
     return {
       statusCode: HttpStatus.OK,
@@ -189,15 +196,17 @@ export class UsersController {
     @Query('keyword') keyword: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-  ): Promise<ApiResponse<{
-    users: PublicUserResponseDto[];
-    pagination: {
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-    };
-  }>> {
+  ): Promise<
+    ApiResponse<{
+      users: PublicUserResponseDto[];
+      pagination: {
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      };
+    }>
+  > {
     const result = await this.usersService.search(keyword, page, limit);
     return {
       statusCode: HttpStatus.OK,
@@ -219,7 +228,9 @@ export class UsersController {
    * GET /users/:id
    */
   @Get(':id')
-  async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<ApiResponse<PublicUserResponseDto>> {
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ApiResponse<PublicUserResponseDto>> {
     const user = await this.usersService.findByIdOrFail(id);
     return {
       statusCode: HttpStatus.OK,
@@ -253,7 +264,9 @@ export class UsersController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async remove(@Param('id', ParseUUIDPipe) id: string): Promise<ApiResponse<null>> {
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ApiResponse<null>> {
     await this.usersService.remove(id);
     return {
       statusCode: HttpStatus.OK,

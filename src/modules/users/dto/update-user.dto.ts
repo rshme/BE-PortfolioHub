@@ -1,4 +1,14 @@
-import { IsEmail, IsEnum, IsOptional, IsString, MinLength, Matches, IsUrl, IsObject, MaxLength } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MinLength,
+  Matches,
+  IsUrl,
+  IsObject,
+  MaxLength,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 import { UserRole } from '../../../common/enums/user-role.enum';
 

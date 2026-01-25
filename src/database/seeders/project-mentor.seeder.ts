@@ -5,7 +5,9 @@ import { ProjectMentor } from '../../modules/projects/entities/project-mentor.en
 import { MentorStatus } from '../../common/enums/mentor-status.enum';
 import { UserRole } from '../../common/enums/user-role.enum';
 
-export const seedProjectMentors = async (dataSource: DataSource): Promise<void> => {
+export const seedProjectMentors = async (
+  dataSource: DataSource,
+): Promise<void> => {
   const projectMentorRepository = dataSource.getRepository(ProjectMentor);
   const projectRepository = dataSource.getRepository(Project);
   const userRepository = dataSource.getRepository(User);
@@ -41,7 +43,11 @@ export const seedProjectMentors = async (dataSource: DataSource): Promise<void> 
       projectName: 'EduConnect - Online Learning Platform',
       mentor: mentor1,
       status: MentorStatus.ACTIVE,
-      expertiseAreas: ['Full-stack Development', 'System Architecture', 'Database Design'],
+      expertiseAreas: [
+        'Full-stack Development',
+        'System Architecture',
+        'Database Design',
+      ],
       joinedAt: new Date('2026-01-20'),
     },
     {
@@ -85,7 +91,7 @@ export const seedProjectMentors = async (dataSource: DataSource): Promise<void> 
   let totalCreated = 0;
 
   for (const assignment of mentorAssignments) {
-    const project = projects.find(p => p.name === assignment.projectName);
+    const project = projects.find((p) => p.name === assignment.projectName);
     if (!project || !assignment.mentor) continue;
 
     const projectMentor = projectMentorRepository.create({

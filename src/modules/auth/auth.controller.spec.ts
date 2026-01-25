@@ -84,9 +84,7 @@ describe('AuthController', () => {
       const error = new Error('Email sudah terdaftar');
       mockAuthService.register.mockRejectedValue(error);
 
-      await expect(authController.register(registerDto)).rejects.toThrow(
-        error,
-      );
+      await expect(authController.register(registerDto)).rejects.toThrow(error);
     });
   });
 

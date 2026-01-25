@@ -183,9 +183,7 @@ describe('AuthService', () => {
       );
 
       expect(result).toEqual(mockUser);
-      expect(usersService.findByEmail).toHaveBeenCalledWith(
-        'test@example.com',
-      );
+      expect(usersService.findByEmail).toHaveBeenCalledWith('test@example.com');
       expect(bcrypt.compare).toHaveBeenCalledWith(
         'password123',
         mockUser.password,

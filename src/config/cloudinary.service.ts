@@ -1,6 +1,10 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { v2 as cloudinary, UploadApiResponse, UploadApiErrorResponse } from 'cloudinary';
+import {
+  v2 as cloudinary,
+  UploadApiResponse,
+  UploadApiErrorResponse,
+} from 'cloudinary';
 import { CloudinaryResponse } from '../common/interfaces/cloudinary-response.interface';
 import * as streamifier from 'streamifier';
 
@@ -23,7 +27,12 @@ export class CloudinaryService {
     transformation?: any[],
   ): Promise<CloudinaryResponse> {
     // Validate file type
-    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+    const allowedMimeTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/jpg',
+      'image/webp',
+    ];
     if (!allowedMimeTypes.includes(file.mimetype)) {
       throw new BadRequestException(
         'Unsupported file format. Please use JPEG, PNG, or WebP',

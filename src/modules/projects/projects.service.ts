@@ -17,6 +17,8 @@ import { CloudinaryService } from '../../config/cloudinary.service';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { MentorStatus } from '../../common/enums/mentor-status.enum';
 import { VolunteerStatus } from '../../common/enums/volunteer-status.enum';
+import { TaskStatus } from '../../common/enums/task-status.enum';
+import { Task } from '../tasks/entities/task.entity';
 import { PaginationMeta } from '../../common/interfaces/response.interface';
 
 @Injectable()
@@ -32,6 +34,8 @@ export class ProjectsService {
     private readonly projectMentorRepository: Repository<ProjectMentor>,
     @InjectRepository(ProjectVolunteer)
     private readonly projectVolunteerRepository: Repository<ProjectVolunteer>,
+    @InjectRepository(Task)
+    private readonly taskRepository: Repository<Task>,
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
@@ -49,7 +53,8 @@ export class ProjectsService {
 
     // Upload banner to Cloudinary
     if (banner) {
-      const bannerResult = await this.cloudinaryService.uploadProjectBanner(banner);
+      const bannerResult =
+        await this.cloudinaryService.uploadProjectBanner(banner);
       bannerUrl = bannerResult.secure_url;
     }
 
@@ -161,7 +166,9 @@ export class ProjectsService {
     }
 
     if (isVerifiedBoolean !== undefined) {
-      queryBuilder.andWhere('project.isVerified = :isVerifiedBoolean', { isVerifiedBoolean });
+      queryBuilder.andWhere('project.isVerified = :isVerifiedBoolean', {
+        isVerifiedBoolean,
+      });
     }
 
     // Apply sorting
@@ -169,7 +176,9 @@ export class ProjectsService {
 
     // Get total count before pagination (need to count distinct project IDs due to groupBy)
     const countQuery = queryBuilder.clone();
-    const countResult = await countQuery.select('COUNT(DISTINCT project.id)', 'total').getRawOne();
+    const countResult = await countQuery
+      .select('COUNT(DISTINCT project.id)', 'total')
+      .getRawOne();
     const total = parseInt(countResult?.total || '0');
 
     // Apply pagination
@@ -185,8 +194,10 @@ export class ProjectsService {
     }));
 
     // Format projects to exclude sensitive data
-    const formattedProjects = projectsWithCount.map((project) =>
-      this.formatProjectResponse(project),
+    const formattedProjects = await Promise.all(
+      projectsWithCount.map((project) =>
+        this.formatProjectResponse(project, false),
+      ),
     );
 
     return {
@@ -203,11 +214,28 @@ export class ProjectsService {
   /**
    * Find one project by ID with all relations
    */
-  async findOne(id: string): Promise<Project> {
+  async findOne(id: string, userId?: string): Promise<Project> {
     const project = await this.findOneRaw(id);
 
-    // Format response to exclude sensitive data
-    return this.formatProjectResponse(project);
+    // Check if user has access before formatting
+    let hasAccess = false;
+    if (userId) {
+      hasAccess = await this.hasProjectAccess(id, userId);
+    }
+
+    // Format response to exclude sensitive data and add task stats if has access
+    let formattedProject = await this.formatProjectResponse(project, hasAccess, id);
+
+    // If userId is provided and has access, add general task statistics
+    if (hasAccess) {
+      const taskStats = await this.getTaskStatistics(id);
+      formattedProject = {
+        ...formattedProject,
+        taskStatistics: taskStats,
+      };
+    }
+
+    return formattedProject;
   }
 
   /**
@@ -278,7 +306,8 @@ export class ProjectsService {
       }
 
       // Upload new banner
-      const bannerResult = await this.cloudinaryService.uploadProjectBanner(banner);
+      const bannerResult =
+        await this.cloudinaryService.uploadProjectBanner(banner);
       project.bannerUrl = bannerResult.secure_url;
     } else if (updateProjectDto.removeBanner) {
       // Remove banner if requested
@@ -306,7 +335,10 @@ export class ProjectsService {
     }
 
     // Handle image removal
-    if (updateProjectDto.removeImages && updateProjectDto.removeImages.length > 0) {
+    if (
+      updateProjectDto.removeImages &&
+      updateProjectDto.removeImages.length > 0
+    ) {
       for (const imageUrl of updateProjectDto.removeImages) {
         const publicId = this.cloudinaryService.extractPublicId(imageUrl);
         if (publicId) {
@@ -401,7 +433,9 @@ export class ProjectsService {
 
     // Delete associated images from Cloudinary
     if (project.bannerUrl) {
-      const publicId = this.cloudinaryService.extractPublicId(project.bannerUrl);
+      const publicId = this.cloudinaryService.extractPublicId(
+        project.bannerUrl,
+      );
       if (publicId) {
         await this.cloudinaryService.deleteFile(publicId);
       }
@@ -465,7 +499,7 @@ export class ProjectsService {
    */
   private formatUserData(user: any): any {
     if (!user) return null;
-    
+
     const { password, role, email, ...safeUserData } = user;
     return safeUserData;
   }
@@ -473,14 +507,18 @@ export class ProjectsService {
   /**
    * Helper method to format project response without sensitive data
    */
-  private formatProjectResponse(project: any): any {
+  private async formatProjectResponse(project: any, hasAccess: boolean = false, projectId?: string): Promise<any> {
     // Format creator
     if (project.creator) {
       project.creator = this.formatUserData(project.creator);
     }
 
     // Format volunteers - extract only ACTIVE volunteers
-    if (project.volunteers && Array.isArray(project.volunteers) && project.volunteers.length > 0) {
+    if (
+      project.volunteers &&
+      Array.isArray(project.volunteers) &&
+      project.volunteers.length > 0
+    ) {
       const activeVolunteers = project.volunteers
         .filter((pv: any) => pv.status === VolunteerStatus.ACTIVE)
         .map((pv: any) => ({
@@ -492,13 +530,26 @@ export class ProjectsService {
           leftAt: pv.leftAt || null,
           user: pv.user ? this.formatUserData(pv.user) : null,
         }));
-      project.volunteers = activeVolunteers.length > 0 ? activeVolunteers : null;
+      
+      // Add task statistics per volunteer if user has project access
+      if (hasAccess && projectId && activeVolunteers.length > 0) {
+        project.volunteers = await this.addVolunteerTaskStatistics(
+          activeVolunteers,
+          projectId,
+        );
+      } else {
+        project.volunteers = activeVolunteers.length > 0 ? activeVolunteers : null;
+      }
     } else {
       project.volunteers = null;
     }
 
     // Format mentors - extract only ACTIVE mentors
-    if (project.mentors && Array.isArray(project.mentors) && project.mentors.length > 0) {
+    if (
+      project.mentors &&
+      Array.isArray(project.mentors) &&
+      project.mentors.length > 0
+    ) {
       const activeMentors = project.mentors
         .filter((pm: any) => pm.status === MentorStatus.ACTIVE)
         .map((pm: any) => ({
@@ -515,28 +566,44 @@ export class ProjectsService {
     }
 
     // Format skills - extract only skill data
-    if (project.skills && Array.isArray(project.skills) && project.skills.length > 0) {
+    if (
+      project.skills &&
+      Array.isArray(project.skills) &&
+      project.skills.length > 0
+    ) {
       project.skills = project.skills
-        .map((ps: any) => ps.skill ? {
-          id: ps.skill.id,
-          name: ps.skill.name,
-          icon: ps.skill.icon || null,
-          isMandatory: ps.isMandatory || false,
-        } : null)
+        .map((ps: any) =>
+          ps.skill
+            ? {
+                id: ps.skill.id,
+                name: ps.skill.name,
+                icon: ps.skill.icon || null,
+                isMandatory: ps.isMandatory || false,
+              }
+            : null,
+        )
         .filter((skill: any) => skill !== null);
     } else {
       project.skills = null;
     }
 
     // Format categories - extract only category data
-    if (project.categories && Array.isArray(project.categories) && project.categories.length > 0) {
+    if (
+      project.categories &&
+      Array.isArray(project.categories) &&
+      project.categories.length > 0
+    ) {
       project.categories = project.categories
-        .map((pc: any) => pc.category ? {
-          id: pc.category.id,
-          name: pc.category.name,
-          icon: pc.category.icon || null,
-          description: pc.category.description || null,
-        } : null)
+        .map((pc: any) =>
+          pc.category
+            ? {
+                id: pc.category.id,
+                name: pc.category.name,
+                icon: pc.category.icon || null,
+                description: pc.category.description || null,
+              }
+            : null,
+        )
         .filter((category: any) => category !== null);
     } else {
       project.categories = null;
@@ -817,10 +884,7 @@ export class ProjectsService {
   /**
    * Leave as mentor from project
    */
-  async leaveMentor(
-    projectId: string,
-    userId: string,
-  ): Promise<ProjectMentor> {
+  async leaveMentor(projectId: string, userId: string): Promise<ProjectMentor> {
     const mentor = await this.projectMentorRepository.findOne({
       where: {
         projectId,
@@ -865,7 +929,7 @@ export class ProjectsService {
     }
 
     const whereCondition: any = { projectId };
-    
+
     if (status) {
       whereCondition.status = status;
     }
@@ -1242,7 +1306,7 @@ export class ProjectsService {
     }
 
     const whereCondition: any = { projectId };
-    
+
     if (status) {
       whereCondition.status = status;
     }
@@ -1299,5 +1363,134 @@ export class ProjectsService {
       volunteerCount: count,
     });
   }
-}
 
+  /**
+   * Get task statistics for a project
+   */
+  private async getTaskStatistics(projectId: string) {
+    const tasks = await this.taskRepository.find({
+      where: { projectId },
+    });
+
+    const total = tasks.length;
+    const todo = tasks.filter((t) => t.status === TaskStatus.TODO).length;
+    const inProgress = tasks.filter(
+      (t) => t.status === TaskStatus.IN_PROGRESS,
+    ).length;
+    const inReview = tasks.filter(
+      (t) => t.status === TaskStatus.IN_REVIEW,
+    ).length;
+    const completed = tasks.filter(
+      (t) => t.status === TaskStatus.COMPLETED,
+    ).length;
+    const cancelled = tasks.filter(
+      (t) => t.status === TaskStatus.CANCELLED,
+    ).length;
+
+    const completionPercentage =
+      total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return {
+      total,
+      todo,
+      inProgress,
+      inReview,
+      completed,
+      cancelled,
+      completionPercentage,
+    };
+  }
+
+  /**
+   * Get task statistics for a specific volunteer
+   */
+  private async getVolunteerTaskStatistics(projectId: string, userId: string) {
+    const tasks = await this.taskRepository.find({
+      where: { projectId, assignedToId: userId },
+    });
+
+    const total = tasks.length;
+    const todo = tasks.filter((t) => t.status === TaskStatus.TODO).length;
+    const inProgress = tasks.filter(
+      (t) => t.status === TaskStatus.IN_PROGRESS,
+    ).length;
+    const inReview = tasks.filter(
+      (t) => t.status === TaskStatus.IN_REVIEW,
+    ).length;
+    const completed = tasks.filter(
+      (t) => t.status === TaskStatus.COMPLETED,
+    ).length;
+    const cancelled = tasks.filter(
+      (t) => t.status === TaskStatus.CANCELLED,
+    ).length;
+
+    const completionPercentage =
+      total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return {
+      total,
+      todo,
+      inProgress,
+      inReview,
+      completed,
+      cancelled,
+      completionPercentage,
+    };
+  }
+
+  /**
+   * Add task statistics to each volunteer (async wrapper for Promise.all)
+   */
+  private async addVolunteerTaskStatistics(
+    volunteers: any[],
+    projectId: string,
+  ): Promise<any[]> {
+    const volunteersWithStats = await Promise.all(
+      volunteers.map(async (volunteer) => {
+        const taskStatistics = await this.getVolunteerTaskStatistics(
+          projectId,
+          volunteer.user.id,
+        );
+        return {
+          ...volunteer,
+          taskStatistics,
+        };
+      }),
+    );
+    return volunteersWithStats;
+  }
+
+  /**
+   * Check if user has access to a project
+   * Returns true if user is creator, mentor, or volunteer
+   */
+  private async hasProjectAccess(
+    projectId: string,
+    userId: string,
+  ): Promise<boolean> {
+    // Check if user is project creator
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId, creatorId: userId },
+    });
+
+    if (project) {
+      return true;
+    }
+
+    // Check if user is a mentor
+    const mentor = await this.projectMentorRepository.findOne({
+      where: { projectId, userId },
+    });
+
+    if (mentor) {
+      return true;
+    }
+
+    // Check if user is a volunteer
+    const volunteer = await this.projectVolunteerRepository.findOne({
+      where: { projectId, userId },
+    });
+
+    return !!volunteer;
+  }
+}

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddInvitationAndVolunteerCountFields1769280000000
-  implements MigrationInterface
-{
+export class AddInvitationAndVolunteerCountFields1769280000000 implements MigrationInterface {
   name = 'AddInvitationAndVolunteerCountFields1769280000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -80,9 +78,7 @@ export class AddInvitationAndVolunteerCountFields1769280000000
     await queryRunner.query(
       `DROP INDEX "public"."IDX_project_volunteers_status"`,
     );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_project_mentors_status"`,
-    );
+    await queryRunner.query(`DROP INDEX "public"."IDX_project_mentors_status"`);
 
     // Drop volunteer_count column
     await queryRunner.query(`

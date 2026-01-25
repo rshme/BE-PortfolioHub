@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsString, IsOptional, IsArray, MaxLength } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsArray,
+  MaxLength,
+} from 'class-validator';
 
 export class ApplyMentorDto {
   @IsOptional()

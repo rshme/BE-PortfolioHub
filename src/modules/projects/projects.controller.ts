@@ -33,12 +33,16 @@ import {
 } from './dto';
 import { GetRecommendationsDto } from './dto/get-recommendations.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { User } from '../users/entities/user.entity';
-import { ApiResponse, PaginatedResponse } from '../../common/interfaces/response.interface';
+import {
+  ApiResponse,
+  PaginatedResponse,
+} from '../../common/interfaces/response.interface';
 import { Project } from './entities/project.entity';
 import { ProjectMentor } from './entities/project-mentor.entity';
 import { ProjectVolunteer } from './entities/project-volunteer.entity';
@@ -89,7 +93,9 @@ export class ProjectsController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
-  async findAll(@Query() queryDto: QueryProjectDto): Promise<PaginatedResponse<Project>> {
+  async findAll(
+    @Query() queryDto: QueryProjectDto,
+  ): Promise<PaginatedResponse<Project>> {
     const result = await this.projectsService.findAll(queryDto);
 
     return {
@@ -124,8 +130,12 @@ export class ProjectsController {
 
   @Get(':id')
   @HttpCode(HttpStatus.OK)
-  async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<ApiResponse<Project>> {
-    const project = await this.projectsService.findOne(id);
+  @UseGuards(OptionalJwtAuthGuard)
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user?: User,
+  ): Promise<ApiResponse<Project>> {
+    const project = await this.projectsService.findOne(id, user?.id);
 
     return {
       statusCode: HttpStatus.OK,
@@ -246,7 +256,10 @@ export class ProjectsController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
   ): Promise<ApiResponse<ProjectMentor>> {
-    const mentor = await this.projectsService.acceptMentorInvitation(id, user.id);
+    const mentor = await this.projectsService.acceptMentorInvitation(
+      id,
+      user.id,
+    );
 
     return {
       statusCode: HttpStatus.OK,

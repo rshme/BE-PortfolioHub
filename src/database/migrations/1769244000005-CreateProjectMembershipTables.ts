@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateProjectMembershipTables1769244000005
-  implements MigrationInterface
-{
+export class CreateProjectMembershipTables1769244000005 implements MigrationInterface {
   name = 'CreateProjectMembershipTables1769244000005';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -82,9 +80,7 @@ export class CreateProjectMembershipTables1769244000005
       `ALTER TABLE "project_mentors" DROP CONSTRAINT "FK_4626890da778da1d78dd6574aed"`,
     );
     await queryRunner.query(`DROP TABLE "project_mentors"`);
-    await queryRunner.query(
-      `DROP TYPE "public"."project_mentors_status_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."project_mentors_status_enum"`);
 
     await queryRunner.query(
       `ALTER TABLE "project_volunteers" DROP CONSTRAINT "FK_2627d39be4f32732dc75a6fed1b"`,

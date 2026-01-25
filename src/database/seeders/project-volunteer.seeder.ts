@@ -5,7 +5,9 @@ import { ProjectVolunteer } from '../../modules/projects/entities/project-volunt
 import { VolunteerStatus } from '../../common/enums/volunteer-status.enum';
 import { UserRole } from '../../common/enums/user-role.enum';
 
-export const seedProjectVolunteers = async (dataSource: DataSource): Promise<void> => {
+export const seedProjectVolunteers = async (
+  dataSource: DataSource,
+): Promise<void> => {
   const projectVolunteerRepository = dataSource.getRepository(ProjectVolunteer);
   const projectRepository = dataSource.getRepository(Project);
   const userRepository = dataSource.getRepository(User);
@@ -62,7 +64,7 @@ export const seedProjectVolunteers = async (dataSource: DataSource): Promise<voi
       tasksCompleted: 0,
       joinedAt: null,
     },
-    
+
     // GreenCart
     {
       projectName: 'GreenCart - Sustainable Shopping App',
@@ -165,7 +167,7 @@ export const seedProjectVolunteers = async (dataSource: DataSource): Promise<voi
   let totalCreated = 0;
 
   for (const assignment of volunteerAssignments) {
-    const project = projects.find(p => p.name === assignment.projectName);
+    const project = projects.find((p) => p.name === assignment.projectName);
     if (!project || !assignment.volunteer) continue;
 
     const projectVolunteer = projectVolunteerRepository.create({
@@ -181,5 +183,7 @@ export const seedProjectVolunteers = async (dataSource: DataSource): Promise<voi
     totalCreated++;
   }
 
-  console.log(`✅ Successfully assigned ${totalCreated} volunteers to projects`);
+  console.log(
+    `✅ Successfully assigned ${totalCreated} volunteers to projects`,
+  );
 };
