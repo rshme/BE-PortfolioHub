@@ -1,5 +1,6 @@
 import { CreateProjectDto } from './create-project.dto';
-import { IsOptional, IsBoolean, IsArray, IsString } from 'class-validator';
+import { IsOptional, IsBoolean, IsArray, IsString, IsEnum } from 'class-validator';
+import { ProjectLevel } from '../../../common/enums/project-level.enum';
 
 export class UpdateProjectDto implements Partial<CreateProjectDto> {
   @IsOptional()
@@ -12,6 +13,10 @@ export class UpdateProjectDto implements Partial<CreateProjectDto> {
 
   @IsOptional()
   status?: any;
+
+  @IsEnum(ProjectLevel)
+  @IsOptional()
+  level?: ProjectLevel;
 
   @IsOptional()
   volunteersNeeded?: number;

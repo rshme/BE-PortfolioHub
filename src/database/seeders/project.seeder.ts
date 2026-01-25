@@ -3,6 +3,7 @@ import { Project } from '../../modules/projects/entities/project.entity';
 import { User } from '../../modules/users/entities/user.entity';
 import { Category } from '../../modules/categories/entities/category.entity';
 import { ProjectStatus } from '../../common/enums/project-status.enum';
+import { ProjectLevel } from '../../common/enums/project-level.enum';
 
 export const seedProjects = async (dataSource: DataSource): Promise<void> => {
   const projectRepository = dataSource.getRepository(Project);
@@ -60,6 +61,7 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
         'A comprehensive e-learning platform that connects students with quality educational resources and interactive courses. Features include live classes, assignments, progress tracking, and community forums.',
       creator: owner1,
       status: ProjectStatus.ACTIVE,
+      level: ProjectLevel.INTERMEDIATE,
       volunteersNeeded: 8,
       startDate: new Date('2026-02-01'),
       endDate: new Date('2026-08-31'),
@@ -76,6 +78,7 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
         'Mobile marketplace connecting eco-conscious consumers with sustainable local businesses. Track your carbon footprint, earn rewards for green choices, and discover eco-friendly alternatives.',
       creator: owner2,
       status: ProjectStatus.IN_PROGRESS,
+      level: ProjectLevel.BEGINNER,
       volunteersNeeded: 6,
       startDate: new Date('2026-01-15'),
       endDate: new Date('2026-07-15'),
@@ -92,6 +95,7 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
         'AI-powered health monitoring application that analyzes user health data, provides personalized recommendations, and predicts potential health risks using machine learning algorithms.',
       creator: owner1,
       status: ProjectStatus.IN_PROGRESS,
+      level: ProjectLevel.ADVANCED,
       volunteersNeeded: 10,
       startDate: new Date('2026-01-10'),
       endDate: new Date('2026-12-31'),
@@ -107,6 +111,7 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
         'Open-source web-based IDE for remote pair programming and collaborative coding. Features include real-time code sync, video chat, code review tools, and integrated version control.',
       creator: owner2,
       status: ProjectStatus.ACTIVE,
+      level: ProjectLevel.ADVANCED,
       volunteersNeeded: 12,
       startDate: new Date('2026-03-01'),
       endDate: new Date('2026-12-31'),
@@ -123,6 +128,7 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
         'Platform connecting volunteers with local non-profit organizations. Features include event management, volunteer matching, impact tracking, and community recognition system.',
       creator: owner1,
       status: ProjectStatus.DRAFT,
+      level: ProjectLevel.INTERMEDIATE,
       volunteersNeeded: 7,
       startDate: new Date('2026-03-15'),
       endDate: new Date('2026-11-30'),
@@ -137,6 +143,7 @@ export const seedProjects = async (dataSource: DataSource): Promise<void> => {
         'Intelligent personal finance application that helps users track expenses, create budgets, set financial goals, and get AI-powered savings recommendations.',
       creator: owner2,
       status: ProjectStatus.COMPLETED,
+      level: ProjectLevel.BEGINNER,
       volunteersNeeded: 5,
       startDate: new Date('2025-08-01'),
       endDate: new Date('2026-01-20'),

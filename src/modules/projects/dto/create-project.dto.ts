@@ -13,6 +13,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ProjectStatus } from '../../../common/enums/project-status.enum';
+import { ProjectLevel } from '../../../common/enums/project-level.enum';
 
 export class CreateProjectDto {
   @IsString()
@@ -29,6 +30,10 @@ export class CreateProjectDto {
   @IsEnum(ProjectStatus)
   @IsOptional()
   status?: ProjectStatus = ProjectStatus.DRAFT;
+
+  @IsEnum(ProjectLevel)
+  @IsOptional()
+  level?: ProjectLevel = ProjectLevel.BEGINNER;
 
   @IsInt()
   @Min(0)

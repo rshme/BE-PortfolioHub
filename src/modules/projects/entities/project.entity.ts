@@ -9,6 +9,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { ProjectStatus } from '../../../common/enums/project-status.enum';
+import { ProjectLevel } from '../../../common/enums/project-level.enum';
 import { User } from '../../users/entities/user.entity';
 
 @Entity('projects')
@@ -37,6 +38,13 @@ export class Project {
     default: ProjectStatus.DRAFT,
   })
   status: ProjectStatus;
+
+  @Column({
+    type: 'enum',
+    enum: ProjectLevel,
+    default: ProjectLevel.BEGINNER,
+  })
+  level: ProjectLevel;
 
   @Column({ name: 'volunteers_needed', type: 'int', default: 0 })
   volunteersNeeded: number;

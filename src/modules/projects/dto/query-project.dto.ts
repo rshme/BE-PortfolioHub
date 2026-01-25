@@ -9,6 +9,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ProjectStatus } from '../../../common/enums/project-status.enum';
+import { ProjectLevel } from '../../../common/enums/project-level.enum';
 
 export class QueryProjectDto {
   @IsOptional()
@@ -30,6 +31,10 @@ export class QueryProjectDto {
   @IsOptional()
   @IsEnum(ProjectStatus)
   status?: ProjectStatus;
+
+  @IsOptional()
+  @IsEnum(ProjectLevel)
+  level?: ProjectLevel;
 
   @IsOptional()
   @IsUUID('4')

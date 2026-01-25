@@ -100,6 +100,7 @@ export class ProjectsService {
       limit = 10,
       keyword,
       status,
+      level,
       categoryId,
       skillId,
       creatorId,
@@ -151,6 +152,10 @@ export class ProjectsService {
 
     if (status) {
       queryBuilder.andWhere('project.status = :status', { status });
+    }
+
+    if (level) {
+      queryBuilder.andWhere('project.level = :level', { level });
     }
 
     if (creatorId) {
