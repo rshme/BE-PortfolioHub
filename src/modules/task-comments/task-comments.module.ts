@@ -1,27 +1,25 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { TasksService } from './tasks.service';
-import { TasksController } from './tasks.controller';
-import { Task } from './entities/task.entity';
+import { TaskCommentsService } from './task-comments.service';
+import { TaskCommentsController } from './task-comments.controller';
+import { TaskComment } from './entities/task-comment.entity';
+import { Task } from '../tasks/entities/task.entity';
 import { Project } from '../projects/entities/project.entity';
 import { ProjectMentor } from '../projects/entities/project-mentor.entity';
 import { ProjectVolunteer } from '../projects/entities/project-volunteer.entity';
-import { User } from '../users/entities/user.entity';
-import { TaskComment } from '../task-comments/entities/task-comment.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
+      TaskComment,
       Task,
       Project,
       ProjectMentor,
       ProjectVolunteer,
-      User,
-      TaskComment,
     ]),
   ],
-  controllers: [TasksController],
-  providers: [TasksService],
-  exports: [TasksService],
+  controllers: [TaskCommentsController],
+  providers: [TaskCommentsService],
+  exports: [TaskCommentsService],
 })
-export class TasksModule {}
+export class TaskCommentsModule {}

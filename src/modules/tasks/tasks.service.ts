@@ -11,6 +11,7 @@ import { Project } from '../projects/entities/project.entity';
 import { ProjectMentor } from '../projects/entities/project-mentor.entity';
 import { ProjectVolunteer } from '../projects/entities/project-volunteer.entity';
 import { User } from '../users/entities/user.entity';
+import { TaskComment } from '../task-comments/entities/task-comment.entity';
 import {
   CreateTaskDto,
   UpdateTaskDto,
@@ -37,6 +38,8 @@ export class TasksService {
     private readonly projectVolunteerRepository: Repository<ProjectVolunteer>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(TaskComment)
+    private readonly taskCommentRepository: Repository<TaskComment>,
   ) {}
 
   /**
@@ -186,7 +189,15 @@ export class TasksService {
       throw new ForbiddenException('You do not have access to view this task');
     }
 
-    return this.formatTaskResponse(task);
+    // Get comment count
+    const commentCount = await this.taskCommentRepository.count({
+      where: { taskId: task.id },
+    });
+
+    const formattedTask = this.formatTaskResponse(task);
+    formattedTask.commentCount = commentCount;
+
+    return formattedTask;
   }
 
   /**

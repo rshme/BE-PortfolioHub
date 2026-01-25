@@ -78,6 +78,9 @@ export class Task {
   completedAt?: Date;
 
   // Relations
-  @OneToMany('TaskComment', 'task')
+  @OneToMany('TaskComment', 'task', { cascade: true })
   comments: any[];
+
+  // Virtual field for comment count
+  commentCount?: number;
 }
