@@ -33,6 +33,16 @@ export class ProjectVolunteer {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
+  @Column({ name: 'invited_by', nullable: true })
+  invitedBy?: string;
+
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'invited_by' })
+  inviter?: User;
+
+  @Column({ type: 'text', nullable: true, name: 'application_message' })
+  applicationMessage?: string;
+
   @Column({
     type: 'enum',
     enum: VolunteerStatus,

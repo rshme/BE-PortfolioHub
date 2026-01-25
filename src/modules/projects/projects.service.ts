@@ -3,15 +3,20 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, In } from 'typeorm';
 import { Project } from './entities/project.entity';
 import { ProjectCategory } from './entities/project-category.entity';
 import { ProjectSkill } from './entities/project-skill.entity';
+import { ProjectMentor } from './entities/project-mentor.entity';
+import { ProjectVolunteer } from './entities/project-volunteer.entity';
 import { CreateProjectDto, UpdateProjectDto, QueryProjectDto } from './dto';
 import { CloudinaryService } from '../../config/cloudinary.service';
 import { UserRole } from '../../common/enums/user-role.enum';
+import { MentorStatus } from '../../common/enums/mentor-status.enum';
+import { VolunteerStatus } from '../../common/enums/volunteer-status.enum';
 import { PaginationMeta } from '../../common/interfaces/response.interface';
 
 @Injectable()
@@ -23,6 +28,10 @@ export class ProjectsService {
     private readonly projectCategoryRepository: Repository<ProjectCategory>,
     @InjectRepository(ProjectSkill)
     private readonly projectSkillRepository: Repository<ProjectSkill>,
+    @InjectRepository(ProjectMentor)
+    private readonly projectMentorRepository: Repository<ProjectMentor>,
+    @InjectRepository(ProjectVolunteer)
+    private readonly projectVolunteerRepository: Repository<ProjectVolunteer>,
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
@@ -470,31 +479,37 @@ export class ProjectsService {
       project.creator = this.formatUserData(project.creator);
     }
 
-    // Format volunteers - extract only necessary data
+    // Format volunteers - extract only ACTIVE volunteers
     if (project.volunteers && Array.isArray(project.volunteers) && project.volunteers.length > 0) {
-      project.volunteers = project.volunteers.map((pv: any) => ({
-        id: pv.id,
-        status: pv.status,
-        contributionScore: pv.contributionScore,
-        tasksCompleted: pv.tasksCompleted,
-        joinedAt: pv.joinedAt,
-        leftAt: pv.leftAt || null,
-        user: pv.user ? this.formatUserData(pv.user) : null,
-      }));
+      const activeVolunteers = project.volunteers
+        .filter((pv: any) => pv.status === VolunteerStatus.ACTIVE)
+        .map((pv: any) => ({
+          id: pv.id,
+          status: pv.status,
+          contributionScore: pv.contributionScore,
+          tasksCompleted: pv.tasksCompleted,
+          joinedAt: pv.joinedAt,
+          leftAt: pv.leftAt || null,
+          user: pv.user ? this.formatUserData(pv.user) : null,
+        }));
+      project.volunteers = activeVolunteers.length > 0 ? activeVolunteers : null;
     } else {
       project.volunteers = null;
     }
 
-    // Format mentors - extract only necessary data
+    // Format mentors - extract only ACTIVE mentors
     if (project.mentors && Array.isArray(project.mentors) && project.mentors.length > 0) {
-      project.mentors = project.mentors.map((pm: any) => ({
-        id: pm.id,
-        status: pm.status,
-        expertiseAreas: pm.expertiseAreas || null,
-        joinedAt: pm.joinedAt,
-        leftAt: pm.leftAt || null,
-        user: pm.user ? this.formatUserData(pm.user) : null,
-      }));
+      const activeMentors = project.mentors
+        .filter((pm: any) => pm.status === MentorStatus.ACTIVE)
+        .map((pm: any) => ({
+          id: pm.id,
+          status: pm.status,
+          expertiseAreas: pm.expertiseAreas || null,
+          joinedAt: pm.joinedAt,
+          leftAt: pm.leftAt || null,
+          user: pm.user ? this.formatUserData(pm.user) : null,
+        }));
+      project.mentors = activeMentors.length > 0 ? activeMentors : null;
     } else {
       project.mentors = null;
     }
@@ -554,4 +569,735 @@ export class ProjectsService {
     // Return formatted project with all relations
     return this.findOne(projectId);
   }
+
+  // ==================== MENTOR OPERATIONS ====================
+
+  /**
+   * Apply as mentor to a project
+   */
+  async applyAsMentor(
+    projectId: string,
+    userId: string,
+    applicationMessage?: string,
+    expertiseAreas?: string[],
+  ): Promise<ProjectMentor> {
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Project with ID "${projectId}" not found`);
+    }
+
+    // Check if user is the project creator
+    if (project.creatorId === userId) {
+      throw new BadRequestException(
+        'Project creator cannot apply as a mentor to their own project',
+      );
+    }
+
+    // Check if user already applied or is a mentor
+    const existingMentor = await this.projectMentorRepository.findOne({
+      where: { projectId, userId },
+    });
+
+    if (existingMentor) {
+      if (
+        existingMentor.status === MentorStatus.PENDING ||
+        existingMentor.status === MentorStatus.APPROVED ||
+        existingMentor.status === MentorStatus.ACTIVE
+      ) {
+        throw new ConflictException(
+          'You have already applied or are already a mentor for this project',
+        );
+      }
+    }
+
+    // Create mentor application
+    const mentor = this.projectMentorRepository.create({
+      projectId,
+      userId,
+      applicationMessage,
+      expertiseAreas,
+      status: MentorStatus.PENDING,
+    });
+
+    return this.projectMentorRepository.save(mentor);
+  }
+
+  /**
+   * Accept invitation as mentor
+   */
+  async acceptMentorInvitation(
+    projectId: string,
+    userId: string,
+  ): Promise<ProjectMentor> {
+    const mentor = await this.projectMentorRepository.findOne({
+      where: {
+        projectId,
+        userId,
+        status: MentorStatus.PENDING,
+      },
+      relations: ['inviter'],
+    });
+
+    if (!mentor) {
+      throw new NotFoundException(
+        'Mentor invitation not found or already processed',
+      );
+    }
+
+    // Check if this is an invitation (has invitedBy)
+    if (!mentor.invitedBy) {
+      throw new BadRequestException(
+        'This is not an invitation. Use the apply endpoint instead.',
+      );
+    }
+
+    mentor.status = MentorStatus.ACTIVE;
+    return this.projectMentorRepository.save(mentor);
+  }
+
+  /**
+   * Invite user as mentor to project
+   */
+  async inviteMentor(
+    projectId: string,
+    targetUserId: string,
+    inviterId: string,
+    inviterRole: UserRole,
+    expertiseAreas?: string[],
+  ): Promise<ProjectMentor> {
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+      relations: ['volunteers'],
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Project with ID "${projectId}" not found`);
+    }
+
+    // Check authorization - only creator or admin can invite
+    if (project.creatorId !== inviterId && inviterRole !== UserRole.ADMIN) {
+      // Check if inviter is an active volunteer
+      const isActiveVolunteer = project.volunteers?.some(
+        (v: any) =>
+          v.userId === inviterId &&
+          (v.status === VolunteerStatus.ACTIVE ||
+            v.status === VolunteerStatus.APPROVED),
+      );
+
+      if (!isActiveVolunteer) {
+        throw new ForbiddenException(
+          'Only project creator, active volunteers, or admins can invite mentors',
+        );
+      }
+    }
+
+    // Check if target user is the project creator
+    if (project.creatorId === targetUserId) {
+      throw new BadRequestException(
+        'Cannot invite project creator as a mentor',
+      );
+    }
+
+    // Check if user already invited or is a mentor
+    const existingMentor = await this.projectMentorRepository.findOne({
+      where: { projectId, userId: targetUserId },
+    });
+
+    if (existingMentor) {
+      if (
+        existingMentor.status === MentorStatus.PENDING ||
+        existingMentor.status === MentorStatus.APPROVED ||
+        existingMentor.status === MentorStatus.ACTIVE
+      ) {
+        throw new ConflictException(
+          'User is already invited or is a mentor for this project',
+        );
+      }
+    }
+
+    // Create mentor invitation
+    const mentor = this.projectMentorRepository.create({
+      projectId,
+      userId: targetUserId,
+      invitedBy: inviterId,
+      expertiseAreas,
+      status: MentorStatus.PENDING,
+    });
+
+    return this.projectMentorRepository.save(mentor);
+  }
+
+  /**
+   * Approve mentor application
+   */
+  async approveMentor(
+    projectId: string,
+    mentorId: string,
+    approverId: string,
+    approverRole: UserRole,
+  ): Promise<ProjectMentor> {
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Project with ID "${projectId}" not found`);
+    }
+
+    // Check authorization
+    if (project.creatorId !== approverId && approverRole !== UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'Only project creator or admin can approve mentors',
+      );
+    }
+
+    const mentor = await this.projectMentorRepository.findOne({
+      where: { userId: mentorId, projectId },
+    });
+
+    if (!mentor) {
+      throw new NotFoundException('Mentor application not found');
+    }
+
+    if (mentor.status !== MentorStatus.PENDING) {
+      throw new BadRequestException(
+        'Only pending mentor applications can be approved',
+      );
+    }
+
+    mentor.status = MentorStatus.ACTIVE;
+    return this.projectMentorRepository.save(mentor);
+  }
+
+  /**
+   * Reject mentor application
+   */
+  async rejectMentor(
+    projectId: string,
+    mentorId: string,
+    rejecterId: string,
+    rejecterRole: UserRole,
+  ): Promise<ProjectMentor> {
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Project with ID "${projectId}" not found`);
+    }
+
+    // Check authorization
+    if (project.creatorId !== rejecterId && rejecterRole !== UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'Only project creator or admin can reject mentors',
+      );
+    }
+
+    const mentor = await this.projectMentorRepository.findOne({
+      where: { userId: mentorId, projectId },
+    });
+
+    if (!mentor) {
+      throw new NotFoundException('Mentor application not found');
+    }
+
+    if (mentor.status !== MentorStatus.PENDING) {
+      throw new BadRequestException(
+        'Only pending mentor applications can be rejected',
+      );
+    }
+
+    mentor.status = MentorStatus.REJECTED;
+    return this.projectMentorRepository.save(mentor);
+  }
+
+  /**
+   * Leave as mentor from project
+   */
+  async leaveMentor(
+    projectId: string,
+    userId: string,
+  ): Promise<ProjectMentor> {
+    const mentor = await this.projectMentorRepository.findOne({
+      where: {
+        projectId,
+        userId,
+        status: In([MentorStatus.ACTIVE, MentorStatus.APPROVED]),
+      },
+    });
+
+    if (!mentor) {
+      throw new NotFoundException(
+        'Active mentor record not found for this project',
+      );
+    }
+
+    mentor.status = MentorStatus.LEFT;
+    mentor.leftAt = new Date();
+    return this.projectMentorRepository.save(mentor);
+  }
+
+  /**
+   * Get all mentors for a project
+   */
+  async getProjectMentors(
+    projectId: string,
+    userId: string,
+    userRole: UserRole,
+    status?: MentorStatus,
+  ): Promise<ProjectMentor[]> {
+    // Only creator and admin can access this endpoint
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    if (userRole !== UserRole.ADMIN && project.creatorId !== userId) {
+      throw new ForbiddenException(
+        'Only project creator and admin can view project mentors',
+      );
+    }
+
+    const whereCondition: any = { projectId };
+    
+    if (status) {
+      whereCondition.status = status;
+    }
+
+    return this.projectMentorRepository.find({
+      where: whereCondition,
+      relations: ['user', 'inviter'],
+      order: { joinedAt: 'DESC' },
+    });
+  }
+
+  /**
+   * Get pending mentor applications for a project
+   */
+  async getPendingMentors(
+    projectId: string,
+    userId: string,
+    userRole: UserRole,
+  ): Promise<ProjectMentor[]> {
+    // Only creator and admin can view pending mentors
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    if (userRole !== UserRole.ADMIN && project.creatorId !== userId) {
+      throw new ForbiddenException(
+        'Only project creator and admin can view pending mentor applications',
+      );
+    }
+
+    return this.projectMentorRepository.find({
+      where: { projectId, status: MentorStatus.PENDING },
+      relations: ['user', 'inviter'],
+      order: { joinedAt: 'DESC' },
+    });
+  }
+
+  // ==================== VOLUNTEER OPERATIONS ====================
+
+  /**
+   * Apply as volunteer to a project
+   */
+  async applyAsVolunteer(
+    projectId: string,
+    userId: string,
+    applicationMessage?: string,
+  ): Promise<ProjectVolunteer> {
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Project with ID "${projectId}" not found`);
+    }
+
+    // Check if user is the project creator
+    if (project.creatorId === userId) {
+      throw new BadRequestException(
+        'Project creator cannot apply as a volunteer to their own project',
+      );
+    }
+
+    // Check if user already applied or is a volunteer
+    const existingVolunteer = await this.projectVolunteerRepository.findOne({
+      where: { projectId, userId },
+    });
+
+    if (existingVolunteer) {
+      if (
+        existingVolunteer.status === VolunteerStatus.PENDING ||
+        existingVolunteer.status === VolunteerStatus.APPROVED ||
+        existingVolunteer.status === VolunteerStatus.ACTIVE
+      ) {
+        throw new ConflictException(
+          'You have already applied or are already a volunteer for this project',
+        );
+      }
+    }
+
+    // Create volunteer application
+    const volunteer = this.projectVolunteerRepository.create({
+      projectId,
+      userId,
+      applicationMessage,
+      status: VolunteerStatus.PENDING,
+    });
+
+    return this.projectVolunteerRepository.save(volunteer);
+  }
+
+  /**
+   * Accept invitation as volunteer
+   */
+  async acceptVolunteerInvitation(
+    projectId: string,
+    userId: string,
+  ): Promise<ProjectVolunteer> {
+    const volunteer = await this.projectVolunteerRepository.findOne({
+      where: {
+        projectId,
+        userId,
+        status: VolunteerStatus.PENDING,
+      },
+      relations: ['inviter'],
+    });
+
+    if (!volunteer) {
+      throw new NotFoundException(
+        'Volunteer invitation not found or already processed',
+      );
+    }
+
+    // Check if this is an invitation (has invitedBy)
+    if (!volunteer.invitedBy) {
+      throw new BadRequestException(
+        'This is not an invitation. Use the apply endpoint instead.',
+      );
+    }
+
+    volunteer.status = VolunteerStatus.ACTIVE;
+    await this.projectVolunteerRepository.save(volunteer);
+
+    // Update volunteer count
+    await this.updateVolunteerCount(projectId);
+
+    return volunteer;
+  }
+
+  /**
+   * Invite user as volunteer to project
+   */
+  async inviteVolunteer(
+    projectId: string,
+    targetUserId: string,
+    inviterId: string,
+    inviterRole: UserRole,
+  ): Promise<ProjectVolunteer> {
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Project with ID "${projectId}" not found`);
+    }
+
+    // Check authorization - only creator or admin can invite
+    if (project.creatorId !== inviterId && inviterRole !== UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'Only project creator or admin can invite volunteers',
+      );
+    }
+
+    // Check if target user is the project creator
+    if (project.creatorId === targetUserId) {
+      throw new BadRequestException(
+        'Cannot invite project creator as a volunteer',
+      );
+    }
+
+    // Check if user already invited or is a volunteer
+    const existingVolunteer = await this.projectVolunteerRepository.findOne({
+      where: { projectId, userId: targetUserId },
+    });
+
+    if (existingVolunteer) {
+      if (
+        existingVolunteer.status === VolunteerStatus.PENDING ||
+        existingVolunteer.status === VolunteerStatus.APPROVED ||
+        existingVolunteer.status === VolunteerStatus.ACTIVE
+      ) {
+        throw new ConflictException(
+          'User is already invited or is a volunteer for this project',
+        );
+      }
+    }
+
+    // Create volunteer invitation
+    const volunteer = this.projectVolunteerRepository.create({
+      projectId,
+      userId: targetUserId,
+      invitedBy: inviterId,
+      status: VolunteerStatus.PENDING,
+    });
+
+    return this.projectVolunteerRepository.save(volunteer);
+  }
+
+  /**
+   * Approve volunteer application
+   */
+  async approveVolunteer(
+    projectId: string,
+    volunteerId: string,
+    approverId: string,
+    approverRole: UserRole,
+  ): Promise<ProjectVolunteer> {
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Project with ID "${projectId}" not found`);
+    }
+
+    // Check authorization
+    if (project.creatorId !== approverId && approverRole !== UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'Only project creator or admin can approve volunteers',
+      );
+    }
+
+    const volunteer = await this.projectVolunteerRepository.findOne({
+      where: { userId: volunteerId, projectId },
+    });
+
+    if (!volunteer) {
+      throw new NotFoundException('Volunteer application not found');
+    }
+
+    if (volunteer.status !== VolunteerStatus.PENDING) {
+      throw new BadRequestException(
+        'Only pending volunteer applications can be approved',
+      );
+    }
+
+    volunteer.status = VolunteerStatus.ACTIVE;
+    await this.projectVolunteerRepository.save(volunteer);
+
+    // Update volunteer count
+    await this.updateVolunteerCount(projectId);
+
+    return volunteer;
+  }
+
+  /**
+   * Reject volunteer application
+   */
+  async rejectVolunteer(
+    projectId: string,
+    volunteerId: string,
+    rejecterId: string,
+    rejecterRole: UserRole,
+  ): Promise<ProjectVolunteer> {
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Project with ID "${projectId}" not found`);
+    }
+
+    // Check authorization
+    if (project.creatorId !== rejecterId && rejecterRole !== UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'Only project creator or admin can reject volunteers',
+      );
+    }
+
+    const volunteer = await this.projectVolunteerRepository.findOne({
+      where: { userId: volunteerId, projectId },
+    });
+
+    if (!volunteer) {
+      throw new NotFoundException('Volunteer application not found');
+    }
+
+    if (volunteer.status !== VolunteerStatus.PENDING) {
+      throw new BadRequestException(
+        'Only pending volunteer applications can be rejected',
+      );
+    }
+
+    volunteer.status = VolunteerStatus.REJECTED;
+    return this.projectVolunteerRepository.save(volunteer);
+  }
+
+  /**
+   * Remove volunteer from project (by creator/admin)
+   */
+  async removeVolunteer(
+    projectId: string,
+    volunteerId: string,
+    removerId: string,
+    removerRole: UserRole,
+  ): Promise<void> {
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Project with ID "${projectId}" not found`);
+    }
+
+    // Check authorization
+    if (project.creatorId !== removerId && removerRole !== UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'Only project creator or admin can remove volunteers',
+      );
+    }
+
+    const volunteer = await this.projectVolunteerRepository.findOne({
+      where: { userId: volunteerId, projectId },
+    });
+
+    if (!volunteer) {
+      throw new NotFoundException('Volunteer not found');
+    }
+
+    volunteer.status = VolunteerStatus.LEFT;
+    volunteer.leftAt = new Date();
+    await this.projectVolunteerRepository.save(volunteer);
+
+    // Update volunteer count
+    await this.updateVolunteerCount(projectId);
+  }
+
+  /**
+   * Leave as volunteer from project
+   */
+  async leaveVolunteer(
+    projectId: string,
+    userId: string,
+  ): Promise<ProjectVolunteer> {
+    const volunteer = await this.projectVolunteerRepository.findOne({
+      where: {
+        projectId,
+        userId,
+        status: In([VolunteerStatus.ACTIVE, VolunteerStatus.APPROVED]),
+      },
+    });
+
+    if (!volunteer) {
+      throw new NotFoundException(
+        'Active volunteer record not found for this project',
+      );
+    }
+
+    volunteer.status = VolunteerStatus.LEFT;
+    volunteer.leftAt = new Date();
+    await this.projectVolunteerRepository.save(volunteer);
+
+    // Update volunteer count
+    await this.updateVolunteerCount(projectId);
+
+    return volunteer;
+  }
+
+  /**
+   * Get all volunteers for a project
+   */
+  async getProjectVolunteers(
+    projectId: string,
+    userId: string,
+    userRole: UserRole,
+    status?: VolunteerStatus,
+  ): Promise<ProjectVolunteer[]> {
+    // Only creator and admin can access this endpoint
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    if (userRole !== UserRole.ADMIN && project.creatorId !== userId) {
+      throw new ForbiddenException(
+        'Only project creator and admin can view project volunteers',
+      );
+    }
+
+    const whereCondition: any = { projectId };
+    
+    if (status) {
+      whereCondition.status = status;
+    }
+
+    return this.projectVolunteerRepository.find({
+      where: whereCondition,
+      relations: ['user', 'inviter'],
+      order: { joinedAt: 'DESC' },
+    });
+  }
+
+  /**
+   * Get pending volunteer applications for a project
+   */
+  async getPendingVolunteers(
+    projectId: string,
+    userId: string,
+    userRole: UserRole,
+  ): Promise<ProjectVolunteer[]> {
+    // Only creator and admin can view pending volunteers
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    if (userRole !== UserRole.ADMIN && project.creatorId !== userId) {
+      throw new ForbiddenException(
+        'Only project creator and admin can view pending volunteer applications',
+      );
+    }
+
+    return this.projectVolunteerRepository.find({
+      where: { projectId, status: VolunteerStatus.PENDING },
+      relations: ['user', 'inviter'],
+      order: { joinedAt: 'DESC' },
+    });
+  }
+
+  /**
+   * Update volunteer count for a project
+   */
+  private async updateVolunteerCount(projectId: string): Promise<void> {
+    const count = await this.projectVolunteerRepository.count({
+      where: {
+        projectId,
+        status: In([VolunteerStatus.ACTIVE, VolunteerStatus.APPROVED]),
+      },
+    });
+
+    await this.projectRepository.update(projectId, {
+      volunteerCount: count,
+    });
+  }
 }
+

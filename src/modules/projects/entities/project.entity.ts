@@ -39,6 +39,9 @@ export class Project {
   @Column({ name: 'volunteers_needed', type: 'int', default: 0 })
   volunteersNeeded: number;
 
+  @Column({ name: 'volunteer_count', type: 'int', default: 0 })
+  volunteerCount: number;
+
   @Column({ name: 'start_date', type: 'date', nullable: true })
   startDate?: Date;
 

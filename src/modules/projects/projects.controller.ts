@@ -16,7 +16,20 @@ import {
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ProjectsService } from './projects.service';
-import { CreateProjectDto, UpdateProjectDto, QueryProjectDto, VerifyProjectDto } from './dto';
+import {
+  CreateProjectDto,
+  UpdateProjectDto,
+  QueryProjectDto,
+  VerifyProjectDto,
+  ApplyMentorDto,
+  InviteMentorDto,
+  UpdateMentorStatusDto,
+  ApplyVolunteerDto,
+  InviteVolunteerDto,
+  UpdateVolunteerStatusDto,
+  QueryMentorDto,
+  QueryVolunteerDto,
+} from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -25,6 +38,8 @@ import { UserRole } from '../../common/enums/user-role.enum';
 import { User } from '../users/entities/user.entity';
 import { ApiResponse, PaginatedResponse } from '../../common/interfaces/response.interface';
 import { Project } from './entities/project.entity';
+import { ProjectMentor } from './entities/project-mentor.entity';
+import { ProjectVolunteer } from './entities/project-volunteer.entity';
 
 @Controller('projects')
 export class ProjectsController {
@@ -167,6 +182,377 @@ export class ProjectsController {
       statusCode: HttpStatus.OK,
       message: `Project ${verifyProjectDto.isVerified !== false ? 'verified' : 'unverified'} successfully`,
       data: project,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  // ==================== MENTOR ENDPOINTS ====================
+
+  @Post(':id/mentors/apply')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.MENTOR)
+  async applyAsMentor(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() applyMentorDto: ApplyMentorDto,
+    @CurrentUser() user: User,
+  ): Promise<ApiResponse<ProjectMentor>> {
+    const mentor = await this.projectsService.applyAsMentor(
+      id,
+      user.id,
+      applyMentorDto.applicationMessage,
+      applyMentorDto.expertiseAreas,
+    );
+
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Mentor application submitted successfully',
+      data: mentor,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Post(':id/mentors/accept')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async acceptMentorInvitation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: User,
+  ): Promise<ApiResponse<ProjectMentor>> {
+    const mentor = await this.projectsService.acceptMentorInvitation(id, user.id);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Mentor invitation accepted successfully',
+      data: mentor,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Post(':id/mentors/invite')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard)
+  async inviteMentor(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() inviteMentorDto: InviteMentorDto,
+    @CurrentUser() user: User,
+  ): Promise<ApiResponse<ProjectMentor>> {
+    const mentor = await this.projectsService.inviteMentor(
+      id,
+      inviteMentorDto.userId,
+      user.id,
+      user.role,
+      inviteMentorDto.expertiseAreas,
+    );
+
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Mentor invited successfully',
+      data: mentor,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Patch(':id/mentors/:mentorId/approve')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async approveMentor(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('mentorId', ParseUUIDPipe) mentorId: string,
+    @CurrentUser() user: User,
+  ): Promise<ApiResponse<ProjectMentor>> {
+    const mentor = await this.projectsService.approveMentor(
+      id,
+      mentorId,
+      user.id,
+      user.role,
+    );
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Mentor approved successfully',
+      data: mentor,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Patch(':id/mentors/:mentorId/reject')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async rejectMentor(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('mentorId', ParseUUIDPipe) mentorId: string,
+    @CurrentUser() user: User,
+  ): Promise<ApiResponse<ProjectMentor>> {
+    const mentor = await this.projectsService.rejectMentor(
+      id,
+      mentorId,
+      user.id,
+      user.role,
+    );
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Mentor application rejected',
+      data: mentor,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Delete(':id/mentors/leave')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async leaveMentor(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: User,
+  ): Promise<ApiResponse<ProjectMentor>> {
+    const mentor = await this.projectsService.leaveMentor(id, user.id);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Successfully left as mentor',
+      data: mentor,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get(':id/mentors')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async getProjectMentors(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() queryDto: QueryMentorDto,
+    @CurrentUser() user: User,
+  ): Promise<ApiResponse<ProjectMentor[]>> {
+    const mentors = await this.projectsService.getProjectMentors(
+      id,
+      user.id,
+      user.role,
+      queryDto.status,
+    );
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Mentors retrieved successfully',
+      data: mentors,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get(':id/mentors/pending')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async getPendingMentors(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: User,
+  ): Promise<ApiResponse<ProjectMentor[]>> {
+    const mentors = await this.projectsService.getPendingMentors(
+      id,
+      user.id,
+      user.role,
+    );
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Pending mentor applications retrieved successfully',
+      data: mentors,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  // ==================== VOLUNTEER ENDPOINTS ====================
+
+  @Post(':id/volunteers/apply')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.VOLUNTEER)
+  async applyAsVolunteer(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() applyVolunteerDto: ApplyVolunteerDto,
+    @CurrentUser() user: User,
+  ): Promise<ApiResponse<ProjectVolunteer>> {
+    const volunteer = await this.projectsService.applyAsVolunteer(
+      id,
+      user.id,
+      applyVolunteerDto.applicationMessage,
+    );
+
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Volunteer application submitted successfully',
+      data: volunteer,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Post(':id/volunteers/accept')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async acceptVolunteerInvitation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: User,
+  ): Promise<ApiResponse<ProjectVolunteer>> {
+    const volunteer = await this.projectsService.acceptVolunteerInvitation(
+      id,
+      user.id,
+    );
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Volunteer invitation accepted successfully',
+      data: volunteer,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Post(':id/volunteers/invite')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard)
+  async inviteVolunteer(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() inviteVolunteerDto: InviteVolunteerDto,
+    @CurrentUser() user: User,
+  ): Promise<ApiResponse<ProjectVolunteer>> {
+    const volunteer = await this.projectsService.inviteVolunteer(
+      id,
+      inviteVolunteerDto.userId,
+      user.id,
+      user.role,
+    );
+
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Volunteer invited successfully',
+      data: volunteer,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Patch(':id/volunteers/:volunteerId/approve')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async approveVolunteer(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('volunteerId', ParseUUIDPipe) volunteerId: string,
+    @CurrentUser() user: User,
+  ): Promise<ApiResponse<ProjectVolunteer>> {
+    const volunteer = await this.projectsService.approveVolunteer(
+      id,
+      volunteerId,
+      user.id,
+      user.role,
+    );
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Volunteer approved successfully',
+      data: volunteer,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Patch(':id/volunteers/:volunteerId/reject')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async rejectVolunteer(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('volunteerId', ParseUUIDPipe) volunteerId: string,
+    @CurrentUser() user: User,
+  ): Promise<ApiResponse<ProjectVolunteer>> {
+    const volunteer = await this.projectsService.rejectVolunteer(
+      id,
+      volunteerId,
+      user.id,
+      user.role,
+    );
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Volunteer application rejected',
+      data: volunteer,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Delete(':id/volunteers/:volunteerId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async removeVolunteer(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('volunteerId', ParseUUIDPipe) volunteerId: string,
+    @CurrentUser() user: User,
+  ): Promise<ApiResponse<void>> {
+    await this.projectsService.removeVolunteer(
+      id,
+      volunteerId,
+      user.id,
+      user.role,
+    );
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Volunteer removed successfully',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Delete(':id/volunteers/leave')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async leaveVolunteer(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: User,
+  ): Promise<ApiResponse<ProjectVolunteer>> {
+    const volunteer = await this.projectsService.leaveVolunteer(id, user.id);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Successfully left as volunteer',
+      data: volunteer,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get(':id/volunteers')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async getProjectVolunteers(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() queryDto: QueryVolunteerDto,
+    @CurrentUser() user: User,
+  ): Promise<ApiResponse<ProjectVolunteer[]>> {
+    const volunteers = await this.projectsService.getProjectVolunteers(
+      id,
+      user.id,
+      user.role,
+      queryDto.status,
+    );
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Volunteers retrieved successfully',
+      data: volunteers,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get(':id/volunteers/pending')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async getPendingVolunteers(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: User,
+  ): Promise<ApiResponse<ProjectVolunteer[]>> {
+    const volunteers = await this.projectsService.getPendingVolunteers(
+      id,
+      user.id,
+      user.role,
+    );
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Pending volunteer applications retrieved successfully',
+      data: volunteers,
       timestamp: new Date().toISOString(),
     };
   }
