@@ -4,6 +4,8 @@ import { UserSeeder } from './seeders/user.seeder';
 import { seedCategories } from './seeders/category.seeder';
 import { seedSkills } from './seeders/skill.seeder';
 import { seedBadges } from './seeders/badge.seeder';
+import { seedUserSkills } from './seeders/user-skill.seeder';
+import { seedUserBadges } from './seeders/user-badge.seeder';
 import { seedProjects } from './seeders/project.seeder';
 import { seedProjectCategories } from './seeders/project-category.seeder';
 import { seedProjectSkills } from './seeders/project-skill.seeder';
@@ -39,6 +41,16 @@ const runSeeders = async () => {
     console.log('👥 Running User Seeder...');
     const userSeeder = new UserSeeder();
     await userSeeder.run(dataSource);
+    console.log('');
+
+    // Run User Skills Seeder
+    console.log('🎯 Running User Skills Seeder...');
+    await seedUserSkills(dataSource);
+    console.log('');
+
+    // Run User Badges Seeder
+    console.log('🏅 Running User Badges Seeder...');
+    await seedUserBadges(dataSource);
     console.log('');
 
     // Run Project Seeder

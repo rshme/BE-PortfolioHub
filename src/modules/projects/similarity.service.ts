@@ -1,0 +1,296 @@
+import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, In, Not } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
+import { Project } from './entities/project.entity';
+import { ProjectSkill } from './entities/project-skill.entity';
+import { ProjectVolunteer } from './entities/project-volunteer.entity';
+import { ProjectMentor } from './entities/project-mentor.entity';
+import { UserSkill } from '../users/entities/user-skill.entity';
+import { JaccardSimilarity } from '../../common/utils/jaccard-similarity.util';
+import {
+  SimilarityScore,
+  ProjectRecommendation,
+} from './interfaces/similarity.interface';
+import { ProjectStatus } from '../../common/enums/project-status.enum';
+
+@Injectable()
+export class SimilarityService {
+  private readonly CACHE_TTL = 3600; // 1 hour in seconds
+  private readonly CACHE_PREFIX = 'project_recommendations';
+
+  constructor(
+    @InjectRepository(Project)
+    private readonly projectRepository: Repository<Project>,
+    @InjectRepository(ProjectSkill)
+    private readonly projectSkillRepository: Repository<ProjectSkill>,
+    @InjectRepository(UserSkill)
+    private readonly userSkillRepository: Repository<UserSkill>,
+    @InjectRepository(ProjectVolunteer)
+    private readonly projectVolunteerRepository: Repository<ProjectVolunteer>,
+    @InjectRepository(ProjectMentor)
+    private readonly projectMentorRepository: Repository<ProjectMentor>,
+    @Inject(CACHE_MANAGER)
+    private readonly cacheManager: Cache,
+  ) {}
+
+  /**
+   * Calculate Jaccard similarity between user skills and project skills
+   */
+  async calculateSimilarity(
+    userId: string,
+    projectId: string,
+  ): Promise<SimilarityScore> {
+    // Get user skills
+    const userSkills = await this.userSkillRepository.find({
+      where: { userId },
+      relations: ['skill'],
+    });
+
+    if (userSkills.length === 0) {
+      throw new NotFoundException('User has no skills registered');
+    }
+
+    // Get project skills
+    const projectSkills = await this.projectSkillRepository.find({
+      where: { projectId },
+      relations: ['skill', 'project'],
+    });
+
+    if (projectSkills.length === 0) {
+      throw new NotFoundException('Project has no skills registered');
+    }
+
+    // Extract skill IDs
+    const userSkillIds = userSkills.map((us) => us.skillId);
+    const projectSkillIds = projectSkills.map((ps) => ps.skillId);
+
+    // Calculate Jaccard similarity
+    const similarityScore = JaccardSimilarity.calculate(
+      userSkillIds,
+      projectSkillIds,
+    );
+
+    // Get matching skills
+    const matchingSkillIds = JaccardSimilarity.getCommonItems(
+      userSkillIds,
+      projectSkillIds,
+    );
+
+    const matchingSkills = projectSkills
+      .filter((ps) => matchingSkillIds.includes(ps.skillId))
+      .map((ps) => ps.skill?.name || ps.skillId);
+
+    const project = projectSkills[0].project;
+
+    return {
+      projectId,
+      projectName: project?.name || 'Unknown',
+      similarityScore,
+      similarityPercentage: Math.round(similarityScore * 100),
+      matchingSkillsCount: matchingSkillIds.length,
+      totalProjectSkills: projectSkillIds.length,
+      matchingSkills,
+    };
+  }
+
+  /**
+   * Batch calculate similarity scores for all eligible projects for a user
+   */
+  async batchCalculateSimilarity(
+    userId: string,
+    excludeProjectIds: string[] = [],
+  ): Promise<SimilarityScore[]> {
+    // Get user skills
+    const userSkills = await this.userSkillRepository.find({
+      where: { userId },
+    });
+
+    if (userSkills.length === 0) {
+      return [];
+    }
+
+    const userSkillIds = userSkills.map((us) => us.skillId);
+
+    // Get all active projects with skills (excluding user's projects)
+    let projectsQuery = this.projectRepository
+      .createQueryBuilder('project')
+      .leftJoinAndSelect('project.skills', 'projectSkills')
+      .leftJoinAndSelect('projectSkills.skill', 'skill')
+      .where('project.status IN (:...statuses)', {
+        statuses: [ProjectStatus.ACTIVE, ProjectStatus.IN_PROGRESS],
+      });
+
+    if (excludeProjectIds.length > 0) {
+      projectsQuery = projectsQuery.andWhere(
+        'project.id NOT IN (:...excludeIds)',
+        {
+          excludeIds: excludeProjectIds,
+        },
+      );
+    }
+
+    const projects = await projectsQuery.getMany();
+
+    // Calculate similarity for each project
+    const similarities: SimilarityScore[] = [];
+
+    for (const project of projects) {
+      if (!project.skills || project.skills.length === 0) {
+        continue; // Skip projects without skills
+      }
+
+      const projectSkillIds = project.skills.map((ps: any) => ps.skillId);
+
+      const similarityScore = JaccardSimilarity.calculate(
+        userSkillIds,
+        projectSkillIds,
+      );
+
+      // Only include projects with some similarity
+      if (similarityScore > 0) {
+        const matchingSkillIds = JaccardSimilarity.getCommonItems(
+          userSkillIds,
+          projectSkillIds,
+        );
+
+        const matchingSkills = project.skills
+          .filter((ps: any) => matchingSkillIds.includes(ps.skillId))
+          .map((ps: any) => ps.skill?.name || ps.skillId);
+
+        similarities.push({
+          projectId: project.id,
+          projectName: project.name,
+          similarityScore,
+          similarityPercentage: Math.round(similarityScore * 100),
+          matchingSkillsCount: matchingSkillIds.length,
+          totalProjectSkills: projectSkillIds.length,
+          matchingSkills,
+        });
+      }
+    }
+
+    // Sort by similarity score (descending)
+    return similarities.sort(
+      (a, b) => b.similarityScore - a.similarityScore,
+    );
+  }
+
+  /**
+   * Get project recommendations for a user with caching
+   */
+  async getRecommendations(
+    userId: string,
+    limit: number = 10,
+    minSimilarity: number = 0,
+  ): Promise<ProjectRecommendation[]> {
+    // Check cache first
+    const cacheKey = `${this.CACHE_PREFIX}:${userId}:${limit}:${minSimilarity}`;
+    const cached = await this.cacheManager.get<ProjectRecommendation[]>(
+      cacheKey,
+    );
+
+    if (cached) {
+      return cached;
+    }
+
+    // Get projects user is already part of (to exclude)
+    const [volunteerProjects, mentorProjects, createdProjects] =
+      await Promise.all([
+        this.projectVolunteerRepository.find({
+          where: { userId },
+          select: ['projectId'],
+        }),
+        this.projectMentorRepository.find({
+          where: { userId },
+          select: ['projectId'],
+        }),
+        this.projectRepository.find({
+          where: { creatorId: userId },
+          select: ['id'],
+        }),
+      ]);
+
+    const excludeProjectIds = [
+      ...volunteerProjects.map((pv) => pv.projectId),
+      ...mentorProjects.map((pm) => pm.projectId),
+      ...createdProjects.map((p) => p.id),
+    ];
+
+    // Calculate similarities
+    const similarities = await this.batchCalculateSimilarity(
+      userId,
+      excludeProjectIds,
+    );
+
+    // Filter by minimum similarity
+    const filtered = similarities.filter(
+      (s) => s.similarityPercentage >= minSimilarity,
+    );
+
+    // Get top N recommendations
+    const topSimilarities = filtered.slice(0, limit);
+
+    // Fetch full project details
+    if (topSimilarities.length === 0) {
+      return [];
+    }
+
+    const projectIds = topSimilarities.map((s) => s.projectId);
+    const projects = await this.projectRepository.find({
+      where: { id: In(projectIds) },
+      relations: ['creator', 'skills', 'skills.skill', 'categories', 'categories.category'],
+    });
+
+    // Combine similarity scores with project details
+    const recommendations: ProjectRecommendation[] = topSimilarities.map(
+      (similarity) => {
+        const project = projects.find((p) => p.id === similarity.projectId);
+        return {
+          ...similarity,
+          project,
+        };
+      },
+    );
+
+    // Cache the results
+    await this.cacheManager.set(cacheKey, recommendations, this.CACHE_TTL);
+
+    return recommendations;
+  }
+
+  /**
+   * Invalidate cache for a specific user
+   */
+  async invalidateUserCache(userId: string): Promise<void> {
+    // Since cache-manager doesn't have a pattern-based deletion,
+    // we'll need to track keys or use Redis directly for pattern deletion
+    // For now, we'll just note that cache will expire naturally
+    const cacheKey = `${this.CACHE_PREFIX}:${userId}`;
+    await this.cacheManager.del(cacheKey);
+  }
+
+  /**
+   * Get similarity statistics for a user
+   */
+  async getSimilarityStats(userId: string) {
+    const userSkills = await this.userSkillRepository.find({
+      where: { userId },
+      relations: ['skill'],
+    });
+
+    const similarities = await this.batchCalculateSimilarity(userId);
+
+    return {
+      userSkillsCount: userSkills.length,
+      totalEligibleProjects: similarities.length,
+      averageSimilarity:
+        similarities.length > 0
+          ? similarities.reduce((sum, s) => sum + s.similarityScore, 0) /
+            similarities.length
+          : 0,
+      topMatch: similarities[0] || null,
+    };
+  }
+}

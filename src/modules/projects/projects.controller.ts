@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ProjectsService } from './projects.service';
+import { SimilarityService } from './similarity.service';
 import {
   CreateProjectDto,
   UpdateProjectDto,
@@ -30,6 +31,7 @@ import {
   QueryMentorDto,
   QueryVolunteerDto,
 } from './dto';
+import { GetRecommendationsDto } from './dto/get-recommendations.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -40,10 +42,14 @@ import { ApiResponse, PaginatedResponse } from '../../common/interfaces/response
 import { Project } from './entities/project.entity';
 import { ProjectMentor } from './entities/project-mentor.entity';
 import { ProjectVolunteer } from './entities/project-volunteer.entity';
+import { ProjectRecommendation } from './interfaces/similarity.interface';
 
 @Controller('projects')
 export class ProjectsController {
-  constructor(private readonly projectsService: ProjectsService) {}
+  constructor(
+    private readonly projectsService: ProjectsService,
+    private readonly similarityService: SimilarityService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -91,6 +97,27 @@ export class ProjectsController {
       message: 'Projects retrieved successfully',
       data: result.data,
       meta: result.meta,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get('recommendations/me')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async getRecommendations(
+    @CurrentUser() user: User,
+    @Query() queryDto: GetRecommendationsDto,
+  ): Promise<ApiResponse<ProjectRecommendation[]>> {
+    const recommendations = await this.similarityService.getRecommendations(
+      user.id,
+      queryDto.limit,
+      queryDto.minSimilarity,
+    );
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Project recommendations retrieved successfully',
+      data: recommendations,
       timestamp: new Date().toISOString(),
     };
   }
