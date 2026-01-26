@@ -28,6 +28,7 @@ describe('AuthController', () => {
   const mockAuthService = {
     register: jest.fn(),
     login: jest.fn(),
+    logout: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -150,6 +151,66 @@ describe('AuthController', () => {
         AuthController.prototype.login,
       );
       expect(metadata).toBeDefined();
+    });
+  });
+
+  describe('logout', () => {
+    it('should successfully logout a user', async () => {
+      const mockRequest = {
+        headers: {
+          authorization: 'Bearer valid-jwt-token',
+        },
+      } as any;
+
+      mockAuthService.logout.mockResolvedValue(undefined);
+
+      const result = await authController.logout(mockRequest);
+
+      expect(authService.logout).toHaveBeenCalledWith('valid-jwt-token');
+      expect(result).toHaveProperty('statusCode', 200);
+      expect(result).toHaveProperty('message', 'Logout successful');
+      expect(result.data).toBeNull();
+    });
+
+    it('should handle missing authorization header gracefully', async () => {
+      const mockRequest = {
+        headers: {},
+      } as any;
+
+      mockAuthService.logout.mockResolvedValue(undefined);
+
+      const result = await authController.logout(mockRequest);
+
+      expect(authService.logout).toHaveBeenCalledWith('');
+      expect(result).toHaveProperty('statusCode', 200);
+      expect(result).toHaveProperty('message', 'Logout successful');
+    });
+
+    it('should extract token without Bearer prefix', async () => {
+      const mockRequest = {
+        headers: {
+          authorization: 'Bearer my-token-123',
+        },
+      } as any;
+
+      mockAuthService.logout.mockResolvedValue(undefined);
+
+      await authController.logout(mockRequest);
+
+      expect(authService.logout).toHaveBeenCalledWith('my-token-123');
+    });
+
+    it('should propagate errors from service', async () => {
+      const mockRequest = {
+        headers: {
+          authorization: 'Bearer invalid-token',
+        },
+      } as any;
+
+      const error = new Error('Invalid token');
+      mockAuthService.logout.mockRejectedValue(error);
+
+      await expect(authController.logout(mockRequest)).rejects.toThrow(error);
     });
   });
 });
