@@ -12,6 +12,7 @@ import { TaskStatus } from '../../../common/enums/task-status.enum';
 import { TaskPriority } from '../../../common/enums/task-priority.enum';
 import { Project } from '../../projects/entities/project.entity';
 import { User } from '../../users/entities/user.entity';
+import { Milestone } from '../../milestones/entities/milestone.entity';
 
 @Entity('tasks')
 export class Task {
@@ -24,6 +25,16 @@ export class Task {
   @ManyToOne(() => Project, (project) => project.tasks, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'project_id' })
   project: Project;
+
+  @Column({ name: 'milestone_id', nullable: true })
+  milestoneId?: string;
+
+  @ManyToOne(() => Milestone, (milestone) => milestone.tasks, {
+    onDelete: 'CASCADE',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'milestone_id' })
+  milestone?: Milestone;
 
   @Column({ name: 'assigned_to', nullable: true })
   assignedToId?: string;

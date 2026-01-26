@@ -120,6 +120,7 @@ export class TasksService {
       .createQueryBuilder('task')
       .leftJoinAndSelect('task.assignedTo', 'assignedTo')
       .leftJoinAndSelect('task.createdBy', 'createdBy')
+      .leftJoinAndSelect('task.milestone', 'milestone')
       .where('task.projectId = :projectId', { projectId });
 
     // Apply filters
@@ -176,7 +177,7 @@ export class TasksService {
   async findOne(taskId: string, userId: string): Promise<Task> {
     const task = await this.taskRepository.findOne({
       where: { id: taskId },
-      relations: ['project', 'assignedTo', 'createdBy'],
+      relations: ['project', 'assignedTo', 'createdBy', 'milestone'],
     });
 
     if (!task) {

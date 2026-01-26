@@ -21,6 +21,10 @@ export class CreateTaskDto {
   @IsNotEmpty()
   description: string;
 
+  @IsUUID()
+  @IsOptional()
+  milestoneId?: string;
+
   @IsEnum(TaskPriority)
   @IsOptional()
   priority?: TaskPriority;

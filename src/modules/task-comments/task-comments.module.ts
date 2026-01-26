@@ -7,6 +7,7 @@ import { Task } from '../tasks/entities/task.entity';
 import { Project } from '../projects/entities/project.entity';
 import { ProjectMentor } from '../projects/entities/project-mentor.entity';
 import { ProjectVolunteer } from '../projects/entities/project-volunteer.entity';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { ProjectVolunteer } from '../projects/entities/project-volunteer.entity'
       ProjectMentor,
       ProjectVolunteer,
     ]),
+    AuthModule,
   ],
   controllers: [TaskCommentsController],
   providers: [TaskCommentsService],

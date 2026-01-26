@@ -11,7 +11,8 @@ import { seedProjectCategories } from './seeders/project-category.seeder';
 import { seedProjectSkills } from './seeders/project-skill.seeder';
 import { seedProjectMentors } from './seeders/project-mentor.seeder';
 import { seedProjectVolunteers } from './seeders/project-volunteer.seeder';
-import { seedTasks } from './seeders/task.seeder';
+import { seedMilestones } from './seeders/milestone.seeder';
+import { seedTasks } from './seeders/task-v2.seeder';
 
 const runSeeders = async () => {
   console.log('🌱 Starting database seeding...\n');
@@ -76,6 +77,11 @@ const runSeeders = async () => {
     // Run Project Volunteer Seeder
     console.log('🙋 Running Project Volunteer Seeder...');
     await seedProjectVolunteers(dataSource);
+    console.log('');
+
+    // Run Milestone Seeder
+    console.log('🎯 Running Milestone Seeder...');
+    await seedMilestones(dataSource);
     console.log('');
 
     // Run Task Seeder

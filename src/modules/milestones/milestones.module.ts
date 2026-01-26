@@ -1,31 +1,27 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { TasksService } from './tasks.service';
-import { TasksController } from './tasks.controller';
-import { Task } from './entities/task.entity';
+import { MilestonesController } from './milestones.controller';
+import { MilestonesService } from './milestones.service';
+import { Milestone } from './entities/milestone.entity';
+import { Task } from '../tasks/entities/task.entity';
 import { Project } from '../projects/entities/project.entity';
 import { ProjectMentor } from '../projects/entities/project-mentor.entity';
 import { ProjectVolunteer } from '../projects/entities/project-volunteer.entity';
-import { User } from '../users/entities/user.entity';
-import { TaskComment } from '../task-comments/entities/task-comment.entity';
-import { Milestone } from '../milestones/entities/milestone.entity';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
+      Milestone,
       Task,
       Project,
       ProjectMentor,
       ProjectVolunteer,
-      User,
-      TaskComment,
-      Milestone,
     ]),
     AuthModule,
   ],
-  controllers: [TasksController],
-  providers: [TasksService],
-  exports: [TasksService],
+  controllers: [MilestonesController],
+  providers: [MilestonesService],
+  exports: [MilestonesService],
 })
-export class TasksModule {}
+export class MilestonesModule {}

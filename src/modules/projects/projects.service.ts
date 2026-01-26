@@ -412,7 +412,7 @@ export class ProjectsService {
     // Load project without formatted relations
     const project = await this.projectRepository.findOne({
       where: { id },
-      relations: ['creator', 'volunteers', 'tasks'],
+      relations: ['creator', 'volunteers', 'milestones'],
     });
 
     if (!project) {
@@ -426,13 +426,13 @@ export class ProjectsService {
       );
     }
 
-    // Check if project has active volunteers or tasks
+    // Check if project has active volunteers or milestones
     const hasVolunteers = project.volunteers && project.volunteers.length > 0;
-    const hasTasks = project.tasks && project.tasks.length > 0;
+    const hasMilestones = project.milestones && project.milestones.length > 0;
 
-    if (hasVolunteers || hasTasks) {
+    if (hasVolunteers || hasMilestones) {
       throw new BadRequestException(
-        'Cannot delete project with active volunteers or tasks. Please remove them first.',
+        'Cannot delete project with active volunteers or milestones. Please remove them first.',
       );
     }
 

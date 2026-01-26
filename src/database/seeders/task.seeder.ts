@@ -2,25 +2,34 @@ import { DataSource } from 'typeorm';
 import { Task } from '../../modules/tasks/entities/task.entity';
 import { Project } from '../../modules/projects/entities/project.entity';
 import { User } from '../../modules/users/entities/user.entity';
+import { Milestone } from '../../modules/milestones/entities/milestone.entity';
 import { TaskStatus } from '../../common/enums/task-status.enum';
 import { TaskPriority } from '../../common/enums/task-priority.enum';
 import { UserRole } from '../../common/enums/user-role.enum';
+import { MilestoneStatus } from '../../common/enums/milestone-status.enum';
 
 export const seedTasks = async (dataSource: DataSource): Promise<void> => {
   const taskRepository = dataSource.getRepository(Task);
   const projectRepository = dataSource.getRepository(Project);
   const userRepository = dataSource.getRepository(User);
+  const milestoneRepository = dataSource.getRepository(Milestone);
 
   // Check if tasks already exist
   const existingCount = await taskRepository.count();
   if (existingCount > 0) {
-    console.log('Tasks already exist, skipping seed...');
-    return;
+    console.log('ℹ️  Tasks already exist. Clearing for fresh seed...');
+    await taskRepository.clear();
   }
 
   const projects = await projectRepository.find({ relations: ['creator'] });
   if (projects.length === 0) {
     console.log('⚠️  No projects found. Please run project seeder first.');
+    return;
+  }
+
+  const milestones = await milestoneRepository.find();
+  if (milestones.length === 0) {
+    console.log('⚠️  No milestones found. Please run milestone seeder first.');
     return;
   }
 
@@ -35,14 +44,25 @@ export const seedTasks = async (dataSource: DataSource): Promise<void> => {
 
   const [alice, bob, charlie, eva, frank] = volunteers;
 
+  // Helper function to get milestone for a project by status
+  const getMilestone = (projectId: string, status: MilestoneStatus) => {
+    return milestones.find(
+      (m) => m.projectId === projectId && m.status === status,
+    );
+  };
+
   // Tasks for EduConnect
   const eduConnect = projects.find(
     (p) => p.name === 'EduConnect - Online Learning Platform',
   );
-  const eduConnectTasks = eduConnect
+  const eduConnectPhase1 = eduConnect ? getMilestone(eduConnect.id, MilestoneStatus.COMPLETED) : null;
+  const eduConnectPhase2 = eduConnect ? getMilestone(eduConnect.id, MilestoneStatus.IN_PROGRESS) : null;
+
+  const eduConnectTasks = eduConnect && eduConnectPhase1 && eduConnectPhase2
     ? [
         {
           project: eduConnect,
+          milestone: eduConnectPhase1,
           title: 'Design database schema for user management',
           description:
             'Create comprehensive database schema including users, roles, authentication, and profile management tables.',
@@ -51,9 +71,11 @@ export const seedTasks = async (dataSource: DataSource): Promise<void> => {
           assignedTo: alice,
           createdBy: eduConnect.creator,
           dueDate: new Date('2026-01-25'),
+          completedAt: new Date('2026-01-24'),
         },
         {
           project: eduConnect,
+          milestone: eduConnectPhase1,
           title: 'Implement user authentication with JWT',
           description:
             'Build secure authentication system using JWT tokens, including login, register, and password reset functionality.',
@@ -62,9 +84,11 @@ export const seedTasks = async (dataSource: DataSource): Promise<void> => {
           assignedTo: bob,
           createdBy: eduConnect.creator,
           dueDate: new Date('2026-01-28'),
+          completedAt: new Date('2026-01-27'),
         },
         {
           project: eduConnect,
+          milestone: eduConnectPhase2,
           title: 'Create course listing and detail pages',
           description:
             'Develop responsive UI for browsing courses, including filters, search, and detailed course view.',
@@ -76,6 +100,7 @@ export const seedTasks = async (dataSource: DataSource): Promise<void> => {
         },
         {
           project: eduConnect,
+          milestone: eduConnectPhase2,
           title: 'Implement video streaming functionality',
           description:
             'Integrate video player with adaptive streaming support for course videos.',
@@ -87,6 +112,7 @@ export const seedTasks = async (dataSource: DataSource): Promise<void> => {
         },
         {
           project: eduConnect,
+          milestone: eduConnectPhase2,
           title: 'Build assignment submission system',
           description:
             'Create interface for students to submit assignments with file upload support and grading workflow.',

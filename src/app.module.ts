@@ -11,6 +11,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { TaskCommentsModule } from './modules/task-comments/task-comments.module';
+import { MilestonesModule } from './modules/milestones/milestones.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { TaskCommentsModule } from './modules/task-comments/task-comments.module
     ProjectsModule,
     TasksModule,
     TaskCommentsModule,
+    MilestonesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

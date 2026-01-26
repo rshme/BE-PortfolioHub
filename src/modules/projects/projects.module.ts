@@ -11,6 +11,7 @@ import { ProjectVolunteer } from './entities/project-volunteer.entity';
 import { UserSkill } from '../users/entities/user-skill.entity';
 import { Task } from '../tasks/entities/task.entity';
 import { CloudinaryService } from '../../config/cloudinary.service';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { CloudinaryService } from '../../config/cloudinary.service';
       UserSkill,
       Task,
     ]),
+    AuthModule,
   ],
   controllers: [ProjectsController],
   providers: [ProjectsService, SimilarityService, CloudinaryService],

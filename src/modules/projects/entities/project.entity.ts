@@ -93,6 +93,9 @@ export class Project {
   @OneToMany('Task', 'project')
   tasks: any[];
 
+  @OneToMany('Milestone', 'project')
+  milestones: any[];
+
   @OneToMany('ProjectCategory', 'project')
   categories: any[];
 
