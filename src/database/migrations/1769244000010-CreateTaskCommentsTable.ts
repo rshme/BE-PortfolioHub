@@ -6,35 +6,15 @@ export class CreateTaskCommentsTable1769244000010
   name = 'CreateTaskCommentsTable1769244000010';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Create task_comments table with support for threaded comments
-    await queryRunner.query(`
-      CREATE TABLE "task_comments" (
-        "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
-        "task_id" uuid NOT NULL,
-        "user_id" uuid NOT NULL,
-        "parent_comment_id" uuid,
-        "content" text NOT NULL,
-        "is_edited" boolean NOT NULL DEFAULT false,
-        "created_at" TIMESTAMP NOT NULL DEFAULT now(),
-        "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
-        CONSTRAINT "PK_task_comments" PRIMARY KEY ("id")
-      )
-    `);
-
-    // Add foreign key constraint for task_id
+    // Add new columns to existing task_comments table for threaded comments support
     await queryRunner.query(`
       ALTER TABLE "task_comments" 
-      ADD CONSTRAINT "FK_task_comments_task" 
-      FOREIGN KEY ("task_id") REFERENCES "tasks"("id") 
-      ON DELETE CASCADE ON UPDATE NO ACTION
+      ADD COLUMN "parent_comment_id" uuid
     `);
 
-    // Add foreign key constraint for user_id
     await queryRunner.query(`
       ALTER TABLE "task_comments" 
-      ADD CONSTRAINT "FK_task_comments_user" 
-      FOREIGN KEY ("user_id") REFERENCES "users"("id") 
-      ON DELETE CASCADE ON UPDATE NO ACTION
+      ADD COLUMN "is_edited" boolean NOT NULL DEFAULT false
     `);
 
     // Add self-referencing foreign key for parent comment (threaded comments)
@@ -74,18 +54,17 @@ export class CreateTaskCommentsTable1769244000010
     await queryRunner.query(`DROP INDEX "IDX_task_comments_user_id"`);
     await queryRunner.query(`DROP INDEX "IDX_task_comments_task_id"`);
 
-    // Drop foreign key constraints
+    // Drop foreign key constraint
     await queryRunner.query(
       `ALTER TABLE "task_comments" DROP CONSTRAINT "FK_task_comments_parent"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "task_comments" DROP CONSTRAINT "FK_task_comments_user"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "task_comments" DROP CONSTRAINT "FK_task_comments_task"`,
-    );
 
-    // Drop table
-    await queryRunner.query(`DROP TABLE "task_comments"`);
+    // Drop columns
+    await queryRunner.query(
+      `ALTER TABLE "task_comments" DROP COLUMN "is_edited"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "task_comments" DROP COLUMN "parent_comment_id"`,
+    );
   }
 }
