@@ -6,9 +6,23 @@ import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { CloudinaryService } from '../../config/cloudinary.service';
 import { AuthModule } from '../auth/auth.module';
+import { Project } from '../projects/entities/project.entity';
+import { ProjectVolunteer } from '../projects/entities/project-volunteer.entity';
+import { ProjectMentor } from '../projects/entities/project-mentor.entity';
+import { Task } from '../tasks/entities/task.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), ConfigModule, forwardRef(() => AuthModule)],
+  imports: [
+    TypeOrmModule.forFeature([
+      User,
+      Project,
+      ProjectVolunteer,
+      ProjectMentor,
+      Task,
+    ]),
+    ConfigModule,
+    forwardRef(() => AuthModule),
+  ],
   controllers: [UsersController],
   providers: [UsersService, CloudinaryService],
   exports: [UsersService],

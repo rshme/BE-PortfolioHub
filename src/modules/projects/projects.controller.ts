@@ -107,6 +107,21 @@ export class ProjectsController {
     };
   }
 
+  @Get('creator/:creatorId')
+  @HttpCode(HttpStatus.OK)
+  async findByCreatorId(
+    @Param('creatorId', ParseUUIDPipe) creatorId: string,
+  ): Promise<ApiResponse<Project[]>> {
+    const projects = await this.projectsService.findByCreatorId(creatorId);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Projects by creator retrieved successfully',
+      data: projects,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   @Get('recommendations/me')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
@@ -124,6 +139,21 @@ export class ProjectsController {
       statusCode: HttpStatus.OK,
       message: 'Project recommendations retrieved successfully',
       data: recommendations,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get(':id/statistics')
+  @HttpCode(HttpStatus.OK)
+  async getProjectStatistics(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ApiResponse<any>> {
+    const statistics = await this.projectsService.getProjectStatistics(id);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Project statistics retrieved successfully',
+      data: statistics,
       timestamp: new Date().toISOString(),
     };
   }

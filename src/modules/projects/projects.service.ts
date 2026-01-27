@@ -1498,4 +1498,161 @@ export class ProjectsService {
 
     return !!volunteer;
   }
+
+  /**
+   * Find all projects by creator ID with relations
+   */
+  async findByCreatorId(creatorId: string): Promise<Project[]> {
+    const projects = await this.projectRepository.find({
+      where: { creatorId },
+      relations: [
+        'creator',
+        'verifier',
+        'volunteers',
+        'volunteers.user',
+        'mentors',
+        'mentors.user',
+        'categories',
+        'categories.category',
+        'skills',
+        'skills.skill',
+        'milestones',
+        'tasks',
+      ],
+      order: { createdAt: 'DESC' },
+    });
+
+    // Format each project response
+    const formattedProjects = await Promise.all(
+      projects.map((project) => this.formatProjectResponse(project, true, project.id)),
+    );
+
+    return formattedProjects;
+  }
+
+  /**
+   * Get comprehensive statistics for a project
+   */
+  async getProjectStatistics(projectId: string): Promise<any> {
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+      relations: [
+        'volunteers',
+        'mentors',
+        'tasks',
+        'milestones',
+        'categories',
+        'skills',
+      ],
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Project with ID "${projectId}" not found`);
+    }
+
+    // Count volunteers by status
+    const volunteerStats = {
+      total: project.volunteers?.length || 0,
+      active: project.volunteers?.filter(
+        (v: any) => v.status === VolunteerStatus.ACTIVE,
+      ).length || 0,
+      pending: project.volunteers?.filter(
+        (v: any) => v.status === VolunteerStatus.PENDING,
+      ).length || 0,
+      rejected: project.volunteers?.filter(
+        (v: any) => v.status === VolunteerStatus.REJECTED,
+      ).length || 0,
+      left: project.volunteers?.filter(
+        (v: any) => v.status === VolunteerStatus.LEFT,
+      ).length || 0,
+    };
+
+    // Count mentors by status
+    const mentorStats = {
+      total: project.mentors?.length || 0,
+      active: project.mentors?.filter(
+        (m: any) => m.status === MentorStatus.ACTIVE,
+      ).length || 0,
+      pending: project.mentors?.filter(
+        (m: any) => m.status === MentorStatus.PENDING,
+      ).length || 0,
+      rejected: project.mentors?.filter(
+        (m: any) => m.status === MentorStatus.REJECTED,
+      ).length || 0,
+      left: project.mentors?.filter(
+        (m: any) => m.status === MentorStatus.LEFT,
+      ).length || 0,
+    };
+
+    // Count tasks by status
+    const taskStats = {
+      total: project.tasks?.length || 0,
+      todo: project.tasks?.filter(
+        (t: any) => t.status === TaskStatus.TODO,
+      ).length || 0,
+      inProgress: project.tasks?.filter(
+        (t: any) => t.status === TaskStatus.IN_PROGRESS,
+      ).length || 0,
+      inReview: project.tasks?.filter(
+        (t: any) => t.status === TaskStatus.IN_REVIEW,
+      ).length || 0,
+      completed: project.tasks?.filter(
+        (t: any) => t.status === TaskStatus.COMPLETED,
+      ).length || 0,
+      cancelled: project.tasks?.filter(
+        (t: any) => t.status === TaskStatus.CANCELLED,
+      ).length || 0,
+    };
+
+    // Calculate task completion percentage
+    taskStats['completionPercentage'] =
+      taskStats.total > 0
+        ? Math.round((taskStats.completed / taskStats.total) * 100)
+        : 0;
+
+    // Count milestones by status
+    const milestoneStats = {
+      total: project.milestones?.length || 0,
+      notStarted: project.milestones?.filter(
+        (m: any) => m.status === 'NOT_STARTED',
+      ).length || 0,
+      inProgress: project.milestones?.filter(
+        (m: any) => m.status === 'IN_PROGRESS',
+      ).length || 0,
+      completed: project.milestones?.filter(
+        (m: any) => m.status === 'COMPLETED',
+      ).length || 0,
+      onHold: project.milestones?.filter(
+        (m: any) => m.status === 'ON_HOLD',
+      ).length || 0,
+    };
+
+    // Calculate milestone completion percentage
+    milestoneStats['completionPercentage'] =
+      milestoneStats.total > 0
+        ? Math.round((milestoneStats.completed / milestoneStats.total) * 100)
+        : 0;
+
+    return {
+      projectId: project.id,
+      projectName: project.name,
+      projectStatus: project.status,
+      projectLevel: project.level,
+      isVerified: project.isVerified,
+      volunteers: volunteerStats,
+      mentors: mentorStats,
+      tasks: taskStats,
+      milestones: milestoneStats,
+      categories: project.categories?.length || 0,
+      skills: project.skills?.length || 0,
+      volunteersNeeded: project.volunteersNeeded,
+      volunteersFillPercentage: project.volunteersNeeded > 0
+        ? Math.round((volunteerStats.active / project.volunteersNeeded) * 100)
+        : 0,
+      startDate: project.startDate,
+      endDate: project.endDate,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+    };
+  }
 }

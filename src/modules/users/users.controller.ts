@@ -224,6 +224,22 @@ export class UsersController {
   }
 
   /**
+   * Get user by username (Public - No authentication required)
+   * GET /users/username/:username
+   */
+  @Get('username/:username')
+  async findByUsername(
+    @Param('username') username: string,
+  ): Promise<ApiResponse<PublicUserResponseDto>> {
+    const user = await this.usersService.findByUsernameOrFail(username);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'User retrieved successfully',
+      data: plainToInstance(PublicUserResponseDto, user),
+    };
+  }
+
+  /**
    * Get user by ID (Public - No authentication required)
    * GET /users/:id
    */
@@ -236,6 +252,22 @@ export class UsersController {
       statusCode: HttpStatus.OK,
       message: 'User retrieved successfully',
       data: plainToInstance(PublicUserResponseDto, user),
+    };
+  }
+
+  /**
+   * Get user statistics by ID
+   * GET /users/:id/statistics
+   */
+  @Get(':id/statistics')
+  async getUserStatistics(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ApiResponse<any>> {
+    const statistics = await this.usersService.getUserStatistics(id);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'User statistics retrieved successfully',
+      data: statistics,
     };
   }
 
