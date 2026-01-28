@@ -13,6 +13,8 @@ import { seedProjectMentors } from './seeders/project-mentor.seeder';
 import { seedProjectVolunteers } from './seeders/project-volunteer.seeder';
 import { seedMilestones } from './seeders/milestone.seeder';
 import { seedTasks } from './seeders/task-v2.seeder';
+import { OrganizationSeeder } from './seeders/organization.seeder';
+import { TestimonialSeeder } from './seeders/testimonial.seeder';
 
 const runSeeders = async () => {
   console.log('🌱 Starting database seeding...\n');
@@ -22,6 +24,12 @@ const runSeeders = async () => {
   try {
     await dataSource.initialize();
     console.log('✅ Database connection established\n');
+
+    // Run Organization Seeder
+    console.log('🏢 Running Organization Seeder...');
+    const organizationSeeder = new OrganizationSeeder();
+    await organizationSeeder.run(dataSource);
+    console.log('');
 
     // Run Category Seeder
     console.log('📂 Running Category Seeder...');
@@ -52,6 +60,12 @@ const runSeeders = async () => {
     // Run User Badges Seeder
     console.log('🏅 Running User Badges Seeder...');
     await seedUserBadges(dataSource);
+    console.log('');
+
+    // Run Testimonial Seeder
+    console.log('💬 Running Testimonial Seeder...');
+    const testimonialSeeder = new TestimonialSeeder();
+    await testimonialSeeder.run(dataSource);
     console.log('');
 
     // Run Project Seeder

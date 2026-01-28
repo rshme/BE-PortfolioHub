@@ -28,6 +28,12 @@ export class UserResponseDto {
   socialLinks?: Record<string, string>;
 
   @Expose()
+  organizationId?: string;
+
+  @Expose()
+  organization?: any;
+
+  @Expose()
   createdAt: Date;
 
   @Expose()

@@ -12,6 +12,8 @@ import { ProjectsModule } from './modules/projects/projects.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { TaskCommentsModule } from './modules/task-comments/task-comments.module';
 import { MilestonesModule } from './modules/milestones/milestones.module';
+import { OrganizationsModule } from './modules/organizations/organizations.module';
+import { TestimonialsModule } from './modules/testimonials/testimonials.module';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { MilestonesModule } from './modules/milestones/milestones.module';
     TasksModule,
     TaskCommentsModule,
     MilestonesModule,
+    OrganizationsModule,
+    TestimonialsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

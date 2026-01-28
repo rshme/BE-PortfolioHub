@@ -94,6 +94,12 @@ export class VolunteerProfileResponseDto {
   @Expose()
   createdAt: Date;
 
+  @Expose()
+  organizationId?: string;
+
+  @Expose()
+  organization?: any;
+
   // === Skills ===
   @Expose()
   skills: string[];
@@ -106,6 +112,10 @@ export class VolunteerProfileResponseDto {
   // === Social Links ===
   @Expose()
   socialLinks?: Record<string, string>;
+
+  // === Testimonials ===
+  @Expose()
+  testimonials?: any[];
 
   // === Volunteer Statistics ===
   @Expose()

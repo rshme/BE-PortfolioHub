@@ -664,6 +664,7 @@ export class UsersService {
     // Find user and validate they are a volunteer
     const user = await this.usersRepository.findOne({
       where: { username },
+      relations: ['organization'],
     });
 
     if (!user) {
@@ -776,6 +777,8 @@ export class UsersService {
       avatarUrl: user.avatarUrl,
       bio: user.bio,
       createdAt: user.createdAt,
+      organizationId: user.organizationId,
+      organization: user.organization,
 
       // Skills
       skills,

@@ -6,6 +6,8 @@ import {
   UpdateDateColumn,
   Index,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { UserRole } from '../../../common/enums/user-role.enum';
 import { Exclude } from 'class-transformer';
@@ -45,6 +47,16 @@ export class User {
 
   @Column({ type: 'jsonb', nullable: true, name: 'social_links' })
   socialLinks?: Record<string, string>;
+
+  @Column({ name: 'organization_id', nullable: true })
+  organizationId?: string;
+
+  @ManyToOne('Organization', 'members', {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'organization_id' })
+  organization?: any;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
@@ -94,4 +106,7 @@ export class User {
 
   @OneToMany('Report', 'reportedUser')
   reportsAgainst: any[];
+
+  @OneToMany('Testimonial', 'user')
+  testimonials: any[];
 }
