@@ -19,12 +19,18 @@ describe('TestimonialsService', () => {
     role: 'VOLUNTEER',
   };
 
-  const mockTestimonial = {
+  const mockReviewer = {
     id: '223e4567-e89b-12d3-a456-426614174000',
+    email: 'reviewer@example.com',
+    username: 'reviewer',
+    fullName: 'Reviewer User',
+    role: 'VOLUNTEER',
+  };
+
+  const mockTestimonial = {
+    id: '323e4567-e89b-12d3-a456-426614174000',
     userId: mockUser.id,
-    authorName: 'John Doe',
-    authorPosition: 'Senior Developer',
-    authorCompany: 'Tech Corp',
+    reviewerId: mockReviewer.id,
     content: 'Great developer!',
     rating: 5,
     relationship: 'Colleague',
@@ -34,6 +40,7 @@ describe('TestimonialsService', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     user: mockUser,
+    reviewer: mockReviewer,
   };
 
   const mockTestimonialRepository = {
@@ -82,22 +89,26 @@ describe('TestimonialsService', () => {
     it('should create a new testimonial', async () => {
       const createDto = {
         userId: mockUser.id,
-        authorName: 'John Doe',
-        authorPosition: 'Senior Developer',
-        authorCompany: 'Tech Corp',
+        reviewerId: mockReviewer.id,
         content: 'Great developer!',
         rating: 5,
       };
 
-      mockUserRepository.findOne.mockResolvedValue(mockUser);
+      mockUserRepository.findOne
+        .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce(mockReviewer);
       mockTestimonialRepository.create.mockReturnValue(mockTestimonial);
       mockTestimonialRepository.save.mockResolvedValue(mockTestimonial);
 
       const result = await service.create(createDto);
 
       expect(result).toEqual(mockTestimonial);
+      expect(mockUserRepository.findOne).toHaveBeenCalledTimes(2);
       expect(mockUserRepository.findOne).toHaveBeenCalledWith({
         where: { id: createDto.userId },
+      });
+      expect(mockUserRepository.findOne).toHaveBeenCalledWith({
+        where: { id: createDto.reviewerId },
       });
       expect(mockTestimonialRepository.create).toHaveBeenCalledWith(createDto);
       expect(mockTestimonialRepository.save).toHaveBeenCalledWith(
@@ -108,12 +119,29 @@ describe('TestimonialsService', () => {
     it('should throw NotFoundException if user not found', async () => {
       const createDto = {
         userId: 'non-existent-id',
-        authorName: 'John Doe',
+        reviewerId: mockReviewer.id,
         content: 'Great developer!',
         rating: 5,
       };
 
       mockUserRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.create(createDto)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw NotFoundException if reviewer not found', async () => {
+      const createDto = {
+        userId: mockUser.id,
+        reviewerId: 'non-existent-id',
+        content: 'Great developer!',
+        rating: 5,
+      };
+
+      mockUserRepository.findOne
+        .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce(null);
 
       await expect(service.create(createDto)).rejects.toThrow(
         NotFoundException,
@@ -157,7 +185,7 @@ describe('TestimonialsService', () => {
       });
       expect(mockTestimonialRepository.findAndCount).toHaveBeenCalledWith({
         where: { isVisible: true, isFeatured: false },
-        relations: ['user'],
+        relations: ['user', 'reviewer', 'reviewer.organization'],
         skip: 0,
         take: 10,
         order: { createdAt: 'DESC' },
@@ -205,7 +233,7 @@ describe('TestimonialsService', () => {
       expect(result).toEqual(mockTestimonial);
       expect(mockTestimonialRepository.findOne).toHaveBeenCalledWith({
         where: { id: mockTestimonial.id },
-        relations: ['user'],
+        relations: ['user', 'reviewer', 'reviewer.organization'],
       });
     });
 

@@ -43,7 +43,9 @@ export class TestimonialsController {
     return {
       statusCode: HttpStatus.CREATED,
       message: 'Testimonial created successfully',
-      data: plainToInstance(TestimonialResponseDto, testimonial),
+      data: plainToInstance(TestimonialResponseDto, testimonial, {
+        excludeExtraneousValues: true,
+      }),
     };
   }
 
@@ -72,7 +74,9 @@ export class TestimonialsController {
     return {
       statusCode: HttpStatus.OK,
       message: 'Testimonials retrieved successfully',
-      data: plainToInstance(TestimonialResponseDto, result.data),
+      data: plainToInstance(TestimonialResponseDto, result.data, {
+        excludeExtraneousValues: true,
+      }),
       meta: {
         total: result.total,
         page: result.page,
@@ -105,7 +109,9 @@ export class TestimonialsController {
     return {
       statusCode: HttpStatus.OK,
       message: 'User testimonials retrieved successfully',
-      data: plainToInstance(TestimonialResponseDto, result.data),
+      data: plainToInstance(TestimonialResponseDto, result.data, {
+        excludeExtraneousValues: true,
+      }),
       meta: {
         total: result.total,
         page: result.page,
@@ -127,7 +133,9 @@ export class TestimonialsController {
     return {
       statusCode: HttpStatus.OK,
       message: 'Testimonial retrieved successfully',
-      data: plainToInstance(TestimonialResponseDto, testimonial),
+      data: plainToInstance(TestimonialResponseDto, testimonial, {
+        excludeExtraneousValues: true,
+      }),
     };
   }
 
@@ -148,7 +156,9 @@ export class TestimonialsController {
     return {
       statusCode: HttpStatus.OK,
       message: 'Testimonial updated successfully',
-      data: plainToInstance(TestimonialResponseDto, testimonial),
+      data: plainToInstance(TestimonialResponseDto, testimonial, {
+        excludeExtraneousValues: true,
+      }),
     };
   }
 

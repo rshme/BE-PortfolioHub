@@ -10,9 +10,7 @@ describe('TestimonialsController', () => {
   const mockTestimonial = {
     id: '223e4567-e89b-12d3-a456-426614174000',
     userId: '123e4567-e89b-12d3-a456-426614174000',
-    authorName: 'John Doe',
-    authorPosition: 'Senior Developer',
-    authorCompany: 'Tech Corp',
+    reviewerId: '323e4567-e89b-12d3-a456-426614174000',
     content: 'Great developer!',
     rating: 5,
     relationship: 'Colleague',
@@ -59,7 +57,7 @@ describe('TestimonialsController', () => {
     it('should create a new testimonial', async () => {
       const createDto = {
         userId: mockTestimonial.userId,
-        authorName: 'John Doe',
+        reviewerId: mockTestimonial.reviewerId,
         content: 'Great developer!',
         rating: 5,
       };

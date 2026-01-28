@@ -25,17 +25,15 @@ export class Testimonial {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ name: 'author_name', length: 100 })
-  authorName: string;
+  @Column({ name: 'reviewer_id' })
+  @Index()
+  reviewerId: string;
 
-  @Column({ name: 'author_position', length: 150, nullable: true })
-  authorPosition?: string;
-
-  @Column({ name: 'author_company', length: 150, nullable: true })
-  authorCompany?: string;
-
-  @Column({ name: 'author_avatar_url', nullable: true })
-  authorAvatarUrl?: string;
+  @ManyToOne(() => User, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'reviewer_id' })
+  reviewer: User;
 
   @Column({ type: 'text' })
   content: string;

@@ -36,6 +36,15 @@ export class TestimonialsService {
       throw new NotFoundException('User not found');
     }
 
+    // Verify reviewer exists
+    const reviewer = await this.usersRepository.findOne({
+      where: { id: createTestimonialDto.reviewerId },
+    });
+
+    if (!reviewer) {
+      throw new NotFoundException('Reviewer not found');
+    }
+
     const testimonial = this.testimonialsRepository.create(
       createTestimonialDto,
     );
@@ -68,7 +77,7 @@ export class TestimonialsService {
 
     const [data, total] = await this.testimonialsRepository.findAndCount({
       where: whereCondition,
-      relations: ['user'],
+      relations: ['user', 'reviewer', 'reviewer.organization'],
       skip: (page - 1) * limit,
       take: limit,
       order: { createdAt: 'DESC' },
@@ -113,6 +122,7 @@ export class TestimonialsService {
 
     const [data, total] = await this.testimonialsRepository.findAndCount({
       where: whereCondition,
+      relations: ['reviewer', 'reviewer.organization'],
       skip: (page - 1) * limit,
       take: limit,
       order: { createdAt: 'DESC' },
@@ -132,7 +142,7 @@ export class TestimonialsService {
   async findOne(id: string): Promise<Testimonial> {
     const testimonial = await this.testimonialsRepository.findOne({
       where: { id },
-      relations: ['user'],
+      relations: ['user', 'reviewer', 'reviewer.organization'],
     });
 
     if (!testimonial) {

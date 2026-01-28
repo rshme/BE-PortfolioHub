@@ -3,7 +3,6 @@ import {
   IsOptional,
   MinLength,
   MaxLength,
-  IsUrl,
   IsInt,
   Min,
   Max,
@@ -16,27 +15,8 @@ export class CreateTestimonialDto {
   @IsUUID('4', { message: 'User ID harus berupa UUID yang valid' })
   userId: string;
 
-  @IsString({ message: 'Nama author harus berupa string' })
-  @MinLength(2, { message: 'Nama author minimal 2 karakter' })
-  @MaxLength(100, { message: 'Nama author maksimal 100 karakter' })
-  @Transform(({ value }) => value?.trim())
-  authorName: string;
-
-  @IsString()
-  @MaxLength(150, { message: 'Posisi author maksimal 150 karakter' })
-  @IsOptional()
-  @Transform(({ value }) => value?.trim())
-  authorPosition?: string;
-
-  @IsString()
-  @MaxLength(150, { message: 'Perusahaan author maksimal 150 karakter' })
-  @IsOptional()
-  @Transform(({ value }) => value?.trim())
-  authorCompany?: string;
-
-  @IsUrl({}, { message: 'Avatar URL harus valid' })
-  @IsOptional()
-  authorAvatarUrl?: string;
+  @IsUUID('4', { message: 'Reviewer ID harus berupa UUID yang valid' })
+  reviewerId: string;
 
   @IsString({ message: 'Konten testimonial harus berupa string' })
   @MinLength(10, { message: 'Konten testimonial minimal 10 karakter' })

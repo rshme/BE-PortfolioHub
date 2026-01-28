@@ -7,19 +7,16 @@ export class TestimonialSeeder {
     const testimonialRepository = dataSource.getRepository(Testimonial);
     const userRepository = dataSource.getRepository(User);
 
-    // Get some users to add testimonials for
-    const users = await userRepository.find({ take: 5 });
+    // Get users to add testimonials for and reviewers
+    const users = await userRepository.find({ take: 10 });
 
-    if (users.length === 0) {
-      console.log('⚠ No users found. Please seed users first.');
+    if (users.length < 2) {
+      console.log('⚠ Not enough users found. Please seed users first.');
       return;
     }
 
     const testimonialTemplates = [
       {
-        authorName: 'John Smith',
-        authorPosition: 'Senior Developer',
-        authorCompany: 'Tech Corp',
         content:
           'Outstanding work! This person demonstrated exceptional technical skills and great teamwork throughout our collaboration. Their attention to detail and problem-solving abilities are truly impressive.',
         rating: 5,
@@ -29,9 +26,6 @@ export class TestimonialSeeder {
         isFeatured: true,
       },
       {
-        authorName: 'Sarah Johnson',
-        authorPosition: 'Product Manager',
-        authorCompany: 'InnovateTech',
         content:
           'Highly professional and reliable. They consistently delivered high-quality work on time and were excellent at communicating progress and challenges.',
         rating: 5,
@@ -41,9 +35,6 @@ export class TestimonialSeeder {
         isFeatured: true,
       },
       {
-        authorName: 'Michael Chen',
-        authorPosition: 'Team Lead',
-        authorCompany: 'Digital Solutions',
         content:
           'A great team player with strong leadership qualities. Their ability to mentor junior developers while maintaining their own productivity is commendable.',
         rating: 5,
@@ -53,9 +44,6 @@ export class TestimonialSeeder {
         isFeatured: false,
       },
       {
-        authorName: 'Emily Davis',
-        authorPosition: 'UX Designer',
-        authorCompany: 'Creative Agency',
         content:
           'Excellent collaboration between development and design. They were open to feedback and implemented designs with precision.',
         rating: 4,
@@ -65,9 +53,6 @@ export class TestimonialSeeder {
         isFeatured: false,
       },
       {
-        authorName: 'David Martinez',
-        authorPosition: 'CTO',
-        authorCompany: 'StartupXYZ',
         content:
           'Innovative thinker with strong technical foundation. Their contributions were instrumental in scaling our platform.',
         rating: 5,
@@ -77,9 +62,6 @@ export class TestimonialSeeder {
         isFeatured: true,
       },
       {
-        authorName: 'Lisa Anderson',
-        authorPosition: 'Project Coordinator',
-        authorCompany: 'Non-Profit Org',
         content:
           'Dedicated and passionate about making a difference. Their volunteer work on our project exceeded expectations.',
         rating: 5,
@@ -89,9 +71,6 @@ export class TestimonialSeeder {
         isFeatured: false,
       },
       {
-        authorName: 'Robert Wilson',
-        authorPosition: 'Software Architect',
-        authorCompany: 'Enterprise Solutions',
         content:
           'Strong architectural thinking and clean code practices. A valuable asset to any development team.',
         rating: 5,
@@ -103,17 +82,26 @@ export class TestimonialSeeder {
     ];
 
     let testimonialIndex = 0;
-    for (const user of users) {
-      // Add 2-3 testimonials per user
+    // Create testimonials where users[i] receives testimonials from users[j]
+    for (let i = 0; i < Math.min(5, users.length); i++) {
+      const user = users[i]; // User receiving testimonial
+      
+      // Add 2-3 testimonials per user from different reviewers
       const testimonialsCount = Math.floor(Math.random() * 2) + 2;
 
-      for (let i = 0; i < testimonialsCount && testimonialIndex < testimonialTemplates.length; i++) {
+      for (let j = 0; j < testimonialsCount && testimonialIndex < testimonialTemplates.length; j++) {
+        // Get a different user as reviewer (not the same as the user receiving)
+        const reviewerIndex = (i + j + 1) % users.length;
+        const reviewer = users[reviewerIndex];
+        
+        if (reviewer.id === user.id) continue; // Skip if same user
+
         const template = testimonialTemplates[testimonialIndex];
 
         const existingTestimonial = await testimonialRepository.findOne({
           where: {
             userId: user.id,
-            authorName: template.authorName,
+            reviewerId: reviewer.id,
           },
         });
 
@@ -121,14 +109,15 @@ export class TestimonialSeeder {
           const testimonial = testimonialRepository.create({
             ...template,
             userId: user.id,
+            reviewerId: reviewer.id,
           });
           await testimonialRepository.save(testimonial);
           console.log(
-            `✓ Testimonial created for ${user.fullName} by ${template.authorName}`,
+            `✓ Testimonial created for ${user.fullName} by ${reviewer.fullName}`,
           );
         } else {
           console.log(
-            `○ Testimonial already exists for ${user.fullName} by ${template.authorName}`,
+            `○ Testimonial already exists for ${user.fullName} by ${reviewer.fullName}`,
           );
         }
 

@@ -1,5 +1,43 @@
-import { Expose } from 'class-transformer';
+import { Expose, Type, Exclude } from 'class-transformer';
 
+@Exclude()
+class ReviewerOrganizationDto {
+  @Expose()
+  id: string;
+
+  @Expose()
+  name: string;
+
+  @Expose()
+  description?: string;
+
+  @Expose()
+  industry?: string;
+
+  @Expose()
+  website?: string;
+
+  @Expose()
+  logo?: string;
+}
+
+@Exclude()
+class ReviewerDto {
+  @Expose()
+  fullName: string;
+
+  @Expose()
+  avatarUrl?: string;
+
+  @Expose()
+  role: string;
+
+  @Expose()
+  @Type(() => ReviewerOrganizationDto)
+  organization?: ReviewerOrganizationDto | null;
+}
+
+@Exclude()
 export class TestimonialResponseDto {
   @Expose()
   id: string;
@@ -8,16 +46,11 @@ export class TestimonialResponseDto {
   userId: string;
 
   @Expose()
-  authorName: string;
+  reviewerId: string;
 
   @Expose()
-  authorPosition?: string;
-
-  @Expose()
-  authorCompany?: string;
-
-  @Expose()
-  authorAvatarUrl?: string;
+  @Type(() => ReviewerDto)
+  reviewer?: ReviewerDto;
 
   @Expose()
   content: string;
