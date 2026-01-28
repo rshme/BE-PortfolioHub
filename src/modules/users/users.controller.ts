@@ -28,6 +28,7 @@ import {
   UserResponseDto,
   PublicUserResponseDto,
   VolunteerProfileResponseDto,
+  MentorProfileResponseDto,
 } from './dto';
 import { plainToInstance } from 'class-transformer';
 import { CloudinaryService } from '../../config/cloudinary.service';
@@ -237,6 +238,24 @@ export class UsersController {
       statusCode: HttpStatus.OK,
       message: 'User retrieved successfully',
       data: plainToInstance(VolunteerProfileResponseDto, volunteerProfile, {
+        excludeExtraneousValues: true,
+      }),
+    };
+  }
+
+  /**
+   * Get mentor profile by username (Public - No authentication required)
+   * GET /users/mentor/username/:username
+   */
+  @Get('mentor/username/:username')
+  async getMentorProfile(
+    @Param('username') username: string,
+  ): Promise<ApiResponse<MentorProfileResponseDto>> {
+    const mentorProfile = await this.usersService.getMentorProfileByUsername(username);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'User retrieved successfully',
+      data: plainToInstance(MentorProfileResponseDto, mentorProfile, {
         excludeExtraneousValues: true,
       }),
     };

@@ -21,6 +21,7 @@ import { TaskStatus } from '../../common/enums/task-status.enum';
 import { ProjectStatus } from '../../common/enums/project-status.enum';
 import { UserBadge } from './entities/user-badge.entity';
 import { UserSkill } from './entities/user-skill.entity';
+import { Testimonial } from '../testimonials/entities/testimonial.entity';
 
 @Injectable()
 export class UsersService {
@@ -39,6 +40,8 @@ export class UsersService {
     private readonly userBadgeRepository: Repository<UserBadge>,
     @InjectRepository(UserSkill)
     private readonly userSkillRepository: Repository<UserSkill>,
+    @InjectRepository(Testimonial)
+    private readonly testimonialRepository: Repository<Testimonial>,
   ) {}
 
   /**
@@ -801,6 +804,193 @@ export class UsersService {
 
       // Project Contributions
       projectContributions,
+    };
+  }
+
+  /**
+   * Get mentor profile by username (Public endpoint)
+   */
+  async getMentorProfileByUsername(username: string): Promise<any> {
+    // Find user by username with organization relation
+    const user = await this.usersRepository.findOne({
+      where: { username },
+      relations: ['organization'],
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Verify user is a mentor
+    if (user.role !== UserRole.MENTOR) {
+      throw new BadRequestException(`User ${username} is not a mentor`);
+    }
+
+    // Get skills
+    const userSkills = await this.userSkillRepository.find({
+      where: { userId: user.id },
+      relations: ['skill'],
+    });
+    const skills = userSkills.map((us) => us.skill.name);
+
+    // Get achievements/badges
+    const userBadges = await this.userBadgeRepository.find({
+      where: { userId: user.id },
+      relations: ['badge'],
+      order: { awardedAt: 'DESC' },
+    });
+    const achievements = userBadges.map((ub) => ({
+      id: ub.badge.id,
+      name: ub.badge.name,
+      description: ub.badge.description,
+      iconUrl: ub.badge.iconUrl,
+      rarity: ub.badge.rarity,
+      awardedAt: ub.awardedAt,
+    }));
+
+    // Get mentor projects with full details
+    const mentorProjects = await this.projectMentorRepository.find({
+      where: { 
+        userId: user.id,
+        status: In([MentorStatus.ACTIVE, MentorStatus.PENDING]) 
+      },
+      relations: [
+        'project', 
+        'project.categories', 
+        'project.categories.category',
+        'project.skills',
+        'project.skills.skill',
+        'project.volunteers',
+      ],
+      order: { joinedAt: 'DESC' },
+    });
+
+    // Get testimonials/reviews from volunteers who worked with this mentor
+    const testimonials = await this.testimonialRepository.find({
+      where: { 
+        userId: user.id,
+        isVisible: true,
+      },
+      relations: ['reviewer'],
+      order: { createdAt: 'DESC' },
+    });
+
+    // Calculate average rating from testimonials
+    const totalReviews = testimonials.length;
+    const averageRating = totalReviews > 0
+      ? testimonials.reduce((sum, t) => sum + t.rating, 0) / totalReviews
+      : 0;
+
+    // Format reviews
+    const reviews = testimonials.map((t) => ({
+      id: t.id,
+      rating: t.rating,
+      content: t.content,
+      reviewer: {
+        id: t.reviewer.id,
+        username: t.reviewer.username,
+        fullName: t.reviewer.fullName,
+        avatarUrl: t.reviewer.avatarUrl,
+        role: t.reviewer.role,
+      },
+      createdAt: t.createdAt,
+    }));
+
+    // Calculate total tasks created by mentor across all projects
+    const projectIds = mentorProjects.map((mp) => mp.projectId);
+    const totalTasksCreated = projectIds.length > 0
+      ? await this.taskRepository.count({
+          where: { 
+            projectId: In(projectIds),
+            createdById: user.id,
+          },
+        })
+      : 0;
+
+    // Format mentored projects
+    const mentoredProjects = await Promise.all(
+      mentorProjects.map(async (mp) => {
+        // Get project tags (categories + skills)
+        const categoryNames = mp.project.categories?.map(
+          (pc: any) => pc.category.name,
+        ) || [];
+        const skillNames = mp.project.skills?.map(
+          (ps: any) => ps.skill.name,
+        ) || [];
+        const projectTags = [...categoryNames, ...skillNames];
+
+        // Count active volunteers in this project
+        const volunteersGuided = mp.project.volunteers?.filter(
+          (v: any) => v.status === VolunteerStatus.ACTIVE,
+        ).length || 0;
+
+        // Count tasks created by mentor in this project
+        const tasksCreated = await this.taskRepository.count({
+          where: { 
+            projectId: mp.projectId,
+            createdById: user.id,
+          },
+        });
+
+        return {
+          projectId: mp.project.id,
+          projectName: mp.project.name,
+          projectDescription: mp.project.description,
+          projectStatus: mp.project.status,
+          projectTags,
+          volunteersGuided,
+          tasksCreated,
+          joinedAsmentorAt: mp.joinedAt,
+          volunteersNeeded: mp.project.volunteersNeeded,
+        };
+      }),
+    );
+
+    // Calculate statistics
+    const projectsMentored = mentorProjects.length;
+
+    return {
+      // Basic Info
+      id: user.id,
+      username: user.username,
+      fullName: user.fullName,
+      role: user.role,
+      avatarUrl: user.avatarUrl,
+      bio: user.bio,
+      createdAt: user.createdAt,
+
+      // Professional Info
+      organization: user.organization ? {
+        id: user.organization.id,
+        name: user.organization.name,
+        description: user.organization.description,
+        logoUrl: user.organization.logoUrl,
+        website: user.organization.website,
+      } : null,
+
+      // Skills
+      skills,
+
+      // Social Links
+      socialLinks: user.socialLinks || {},
+
+      // Achievements
+      achievements,
+
+      // Mentor-Specific Stats
+      stats: {
+        projectsMentored,
+        totalTasksCreated,
+        rating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
+        totalReviews,
+        activeSince: user.createdAt,
+      },
+
+      // Mentored Projects
+      mentoredProjects,
+
+      // Reviews
+      reviews,
     };
   }
 }

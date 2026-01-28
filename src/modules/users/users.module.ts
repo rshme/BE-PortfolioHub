@@ -12,6 +12,7 @@ import { Project } from '../projects/entities/project.entity';
 import { ProjectVolunteer } from '../projects/entities/project-volunteer.entity';
 import { ProjectMentor } from '../projects/entities/project-mentor.entity';
 import { Task } from '../tasks/entities/task.entity';
+import { Testimonial } from '../testimonials/entities/testimonial.entity';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { Task } from '../tasks/entities/task.entity';
       ProjectVolunteer,
       ProjectMentor,
       Task,
+      Testimonial,
     ]),
     ConfigModule,
     forwardRef(() => AuthModule),

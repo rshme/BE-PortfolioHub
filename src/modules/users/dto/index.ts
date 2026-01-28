@@ -4,3 +4,4 @@ export * from './update-password.dto';
 export * from './user-response.dto';
 export * from './public-user-response.dto';
 export * from './volunteer-profile-response.dto';
+export * from './mentor-profile-response.dto';
