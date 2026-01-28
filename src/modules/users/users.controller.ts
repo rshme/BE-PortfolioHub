@@ -27,6 +27,7 @@ import {
   UpdatePasswordDto,
   UserResponseDto,
   PublicUserResponseDto,
+  VolunteerProfileResponseDto,
 } from './dto';
 import { plainToInstance } from 'class-transformer';
 import { CloudinaryService } from '../../config/cloudinary.service';
@@ -220,6 +221,24 @@ export class UsersController {
           totalPages: Math.ceil(result.total / result.limit),
         },
       },
+    };
+  }
+
+  /**
+   * Get volunteer profile by username (Public - No authentication required)
+   * GET /users/volunteer/username/:username
+   */
+  @Get('volunteer/username/:username')
+  async getVolunteerProfile(
+    @Param('username') username: string,
+  ): Promise<ApiResponse<VolunteerProfileResponseDto>> {
+    const volunteerProfile = await this.usersService.getVolunteerProfileByUsername(username);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'User retrieved successfully',
+      data: plainToInstance(VolunteerProfileResponseDto, volunteerProfile, {
+        excludeExtraneousValues: true,
+      }),
     };
   }
 

@@ -4,6 +4,8 @@ import { ConfigModule } from '@nestjs/config';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
+import { UserBadge } from './entities/user-badge.entity';
+import { UserSkill } from './entities/user-skill.entity';
 import { CloudinaryService } from '../../config/cloudinary.service';
 import { AuthModule } from '../auth/auth.module';
 import { Project } from '../projects/entities/project.entity';
@@ -15,6 +17,8 @@ import { Task } from '../tasks/entities/task.entity';
   imports: [
     TypeOrmModule.forFeature([
       User,
+      UserBadge,
+      UserSkill,
       Project,
       ProjectVolunteer,
       ProjectMentor,

@@ -19,6 +19,8 @@ import { VolunteerStatus } from '../../common/enums/volunteer-status.enum';
 import { MentorStatus } from '../../common/enums/mentor-status.enum';
 import { TaskStatus } from '../../common/enums/task-status.enum';
 import { ProjectStatus } from '../../common/enums/project-status.enum';
+import { UserBadge } from './entities/user-badge.entity';
+import { UserSkill } from './entities/user-skill.entity';
 
 @Injectable()
 export class UsersService {
@@ -33,6 +35,10 @@ export class UsersService {
     private readonly projectMentorRepository: Repository<ProjectMentor>,
     @InjectRepository(Task)
     private readonly taskRepository: Repository<Task>,
+    @InjectRepository(UserBadge)
+    private readonly userBadgeRepository: Repository<UserBadge>,
+    @InjectRepository(UserSkill)
+    private readonly userSkillRepository: Repository<UserSkill>,
   ) {}
 
   /**
@@ -648,6 +654,150 @@ export class UsersService {
           activeMentors: totalMentors,
         },
       },
+    };
+  }
+
+  /**
+   * Get volunteer profile by username with comprehensive statistics
+   */
+  async getVolunteerProfileByUsername(username: string): Promise<any> {
+    // Find user and validate they are a volunteer
+    const user = await this.usersRepository.findOne({
+      where: { username },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.role !== UserRole.VOLUNTEER) {
+      throw new BadRequestException('User is not a volunteer');
+    }
+
+    // Get user skills
+    const userSkills = await this.userSkillRepository.find({
+      where: { userId: user.id },
+      relations: ['skill'],
+    });
+    const skills = userSkills.map((us) => us.skill.name);
+
+    // Get user badges (achievements)
+    const userBadges = await this.userBadgeRepository.find({
+      where: { userId: user.id },
+      relations: ['badge'],
+      order: { awardedAt: 'DESC' },
+    });
+    const achievements = userBadges.map((ub) => ({
+      id: ub.badge.id,
+      name: ub.badge.name,
+      description: ub.badge.description,
+      iconUrl: ub.badge.iconUrl,
+      rarity: ub.badge.rarity,
+      awardedAt: ub.awardedAt,
+    }));
+
+    // Get volunteer projects with full details
+    const volunteerProjects = await this.projectVolunteerRepository.find({
+      where: { 
+        userId: user.id,
+        status: In([VolunteerStatus.ACTIVE, VolunteerStatus.PENDING]) 
+      },
+      relations: [
+        'project', 
+        'project.categories', 
+        'project.categories.category',
+        'project.skills',
+        'project.skills.skill',
+      ],
+      order: { joinedAt: 'DESC' },
+    });
+
+    // Calculate statistics
+    const totalProjects = volunteerProjects.length;
+    const totalContributions = volunteerProjects.reduce(
+      (sum, vp) => sum + (vp.contributionScore || 0),
+      0,
+    );
+    const totalTasksCompleted = volunteerProjects.reduce(
+      (sum, vp) => sum + (vp.tasksCompleted || 0),
+      0,
+    );
+    const averageScore =
+      totalProjects > 0 ? Math.round(totalContributions / totalProjects) : 0;
+
+    // Determine rank based on contribution score
+    let rank = 'New';
+    if (totalContributions >= 500) {
+      rank = 'Elite Contributor';
+    } else if (totalContributions >= 300) {
+      rank = 'Advanced Contributor';
+    } else if (totalContributions >= 150) {
+      rank = 'Active Contributor';
+    } else if (totalContributions >= 50) {
+      rank = 'Rising Star';
+    }
+
+    // Get total tasks for each project
+    const projectContributions = await Promise.all(
+      volunteerProjects.map(async (vp) => {
+        const totalTasks = await this.taskRepository.count({
+          where: { projectId: vp.projectId },
+        });
+
+        // Get project tags (categories + skills)
+        const categoryNames = vp.project.categories?.map(
+          (pc: any) => pc.category.name,
+        ) || [];
+        const skillNames = vp.project.skills?.map(
+          (ps: any) => ps.skill.name,
+        ) || [];
+        const projectTags = [...categoryNames, ...skillNames];
+
+        return {
+          projectId: vp.project.id,
+          projectName: vp.project.name,
+          projectDescription: vp.project.description,
+          projectStatus: vp.project.status,
+          projectTags,
+          contributionScore: vp.contributionScore || 0,
+          joinedAt: vp.joinedAt,
+          tasksCompleted: vp.tasksCompleted || 0,
+          tasksTotal: totalTasks,
+        };
+      }),
+    );
+
+    return {
+      // Basic Info
+      id: user.id,
+      username: user.username,
+      fullName: user.fullName,
+      role: user.role,
+      avatarUrl: user.avatarUrl,
+      bio: user.bio,
+      createdAt: user.createdAt,
+
+      // Skills
+      skills,
+
+      // Achievements
+      achievements,
+
+      // Social Links
+      socialLinks: user.socialLinks || {},
+
+      // Stats
+      stats: {
+        totalProjects,
+        totalContributions,
+        totalTasksCompleted,
+        averageScore,
+        rank,
+        activeSince: user.createdAt,
+      },
+
+      // Project Contributions
+      projectContributions,
     };
   }
 }
