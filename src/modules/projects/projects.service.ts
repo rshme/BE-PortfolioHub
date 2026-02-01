@@ -126,21 +126,14 @@ export class ProjectsService {
       .createQueryBuilder('project')
       .leftJoinAndSelect('project.creator', 'creator')
       .leftJoinAndSelect('project.verifier', 'verifier')
-      .leftJoin('project.volunteers', 'volunteers')
+      .leftJoinAndSelect('project.volunteers', 'volunteers')
+      .leftJoinAndSelect('volunteers.user', 'volunteerUser')
+      .leftJoinAndSelect('project.mentors', 'mentors')
+      .leftJoinAndSelect('mentors.user', 'mentorUser')
       .leftJoinAndSelect('project.categories', 'projectCategories')
       .leftJoinAndSelect('projectCategories.category', 'category')
       .leftJoinAndSelect('project.skills', 'projectSkills')
-      .leftJoinAndSelect('projectSkills.skill', 'skill')
-      .addSelect('COUNT(DISTINCT volunteers.id)', 'volunteerCount')
-      .groupBy('project.id')
-      .addGroupBy('creator.id')
-      .addGroupBy('verifier.id')
-      .addGroupBy('projectCategories.projectId')
-      .addGroupBy('projectCategories.categoryId')
-      .addGroupBy('category.id')
-      .addGroupBy('projectSkills.projectId')
-      .addGroupBy('projectSkills.skillId')
-      .addGroupBy('skill.id');
+      .leftJoinAndSelect('projectSkills.skill', 'skill');
 
     // Apply filters
     if (keyword) {
@@ -179,23 +172,22 @@ export class ProjectsService {
     // Apply sorting
     queryBuilder.orderBy(`project.${sortBy}`, sortOrder);
 
-    // Get total count before pagination (need to count distinct project IDs due to groupBy)
-    const countQuery = queryBuilder.clone();
-    const countResult = await countQuery
-      .select('COUNT(DISTINCT project.id)', 'total')
-      .getRawOne();
-    const total = parseInt(countResult?.total || '0');
+    // Get total count before pagination
+    const total = await queryBuilder.getCount();
 
     // Apply pagination
     queryBuilder.skip(skip).take(limit);
 
     // Execute query
-    const projects = await queryBuilder.getRawAndEntities();
+    const projects = await queryBuilder.getMany();
 
-    // Map volunteer count to projects
-    const projectsWithCount = projects.entities.map((project, index) => ({
+    // Map volunteer count to projects - count only ACTIVE volunteers
+    const projectsWithCount = projects.map((project) => ({
       ...project,
-      volunteerCount: parseInt(projects.raw[index].volunteerCount) || 0,
+      volunteerCount: project.volunteers
+        ? project.volunteers.filter((v) => v.status === VolunteerStatus.ACTIVE)
+            .length
+        : 0,
     }));
 
     // Format projects to exclude sensitive data
