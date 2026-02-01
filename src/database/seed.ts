@@ -15,6 +15,7 @@ import { seedMilestones } from './seeders/milestone.seeder';
 import { seedTasks } from './seeders/task-v2.seeder';
 import { OrganizationSeeder } from './seeders/organization.seeder';
 import { TestimonialSeeder } from './seeders/testimonial.seeder';
+import { TaskCommentSeeder } from './seeders/task-comment.seeder';
 
 const runSeeders = async () => {
   console.log('🌱 Starting database seeding...\n');
@@ -101,6 +102,12 @@ const runSeeders = async () => {
     // Run Task Seeder
     console.log('✅ Running Task Seeder...');
     await seedTasks(dataSource);
+
+    // Run Task Comment Seeder
+    console.log('💬 Running Task Comment Seeder...');
+    const taskCommentSeeder = new TaskCommentSeeder();
+    await taskCommentSeeder.run(dataSource);
+    console.log('');
 
     console.log('\n🎉 Database seeding completed successfully!');
   } catch (error) {

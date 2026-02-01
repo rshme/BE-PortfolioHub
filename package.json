@@ -23,7 +23,8 @@
     "migration:create": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:create",
     "migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d src/config/typeorm.config.ts",
     "migration:revert": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:revert -d src/config/typeorm.config.ts",
-    "db:seed": "ts-node -r tsconfig-paths/register src/database/seed.ts"
+    "db:seed": "ts-node -r tsconfig-paths/register src/database/seed.ts",
+    "db:seed:task-comments": "ts-node -r tsconfig-paths/register src/database/seeders/run-task-comment.seeder.ts"
   },
   "dependencies": {
     "@nestjs/cache-manager": "^3.1.0",

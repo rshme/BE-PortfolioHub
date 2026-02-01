@@ -121,7 +121,12 @@ export class TasksService {
       .leftJoinAndSelect('task.assignedTo', 'assignedTo')
       .leftJoinAndSelect('task.createdBy', 'createdBy')
       .leftJoinAndSelect('task.milestone', 'milestone')
-      .where('task.projectId = :projectId', { projectId });
+      .leftJoinAndSelect('task.comments', 'comments')
+      .leftJoinAndSelect('comments.user', 'commentUser')
+      .leftJoinAndSelect('comments.replies', 'replies')
+      .leftJoinAndSelect('replies.user', 'replyUser')
+      .where('task.projectId = :projectId', { projectId })
+      .andWhere('(comments.parentCommentId IS NULL OR comments.id IS NULL)');
 
     // Apply filters
     if (keyword) {
@@ -562,6 +567,44 @@ export class TasksService {
     // Format createdBy user
     if (formattedTask.createdBy) {
       formattedTask.createdBy = this.formatUserData(formattedTask.createdBy);
+    }
+
+    // Format comments
+    if (formattedTask.comments && Array.isArray(formattedTask.comments)) {
+      if (formattedTask.comments.length === 0) {
+        formattedTask.comments = null;
+      } else {
+        formattedTask.comments = formattedTask.comments.map((comment: any) => {
+          const formattedComment: any = {
+            id: comment.id,
+            content: comment.content,
+            createdAt: comment.createdAt,
+            updatedAt: comment.updatedAt,
+            user: comment.user ? this.formatUserData(comment.user) : null,
+            replies: null,
+          };
+
+          // Format replies if they exist
+          if (comment.replies && Array.isArray(comment.replies) && comment.replies.length > 0) {
+            formattedComment.replies = comment.replies.map((reply: any) => ({
+              id: reply.id,
+              content: reply.content,
+              createdAt: reply.createdAt,
+              updatedAt: reply.updatedAt,
+              user: reply.user ? {
+                id: reply.user.id,
+                username: reply.user.username,
+                fullName: reply.user.fullName,
+                avatarUrl: reply.user.avatarUrl,
+              } : null,
+            }));
+          }
+
+          return formattedComment;
+        });
+      }
+    } else {
+      formattedTask.comments = null;
     }
 
     // Remove project details if present (keep only ID)

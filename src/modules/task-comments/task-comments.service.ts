@@ -234,10 +234,15 @@ export class TaskCommentsService {
   /**
    * Get a single comment by ID
    */
-  async findOne(commentId: string, userId: string): Promise<TaskComment> {
+  async findOne(commentId: string, userId: string): Promise<any> {
     const comment = await this.taskCommentRepository.findOne({
       where: { id: commentId },
-      relations: ['user', 'task'],
+      relations: ['user', 'task', 'replies', 'replies.user'],
+      order: {
+        replies: {
+          createdAt: 'ASC',
+        },
+      },
     });
 
     if (!comment) {
@@ -253,7 +258,45 @@ export class TaskCommentsService {
       throw new ForbiddenException('You do not have access to view this comment');
     }
 
-    return comment;
+    // Format the response with replies
+    const formattedComment: any = {
+      id: comment.id,
+      taskId: comment.taskId,
+      userId: comment.userId,
+      user: {
+        id: comment.user.id,
+        username: comment.user.username,
+        fullName: comment.user.fullName,
+        avatarUrl: comment.user.avatarUrl,
+      },
+      content: comment.content,
+      isEdited: comment.isEdited,
+      createdAt: comment.createdAt,
+      updatedAt: comment.updatedAt,
+      replies: null,
+    };
+
+    // Format replies if they exist
+    if (comment.replies && comment.replies.length > 0) {
+      formattedComment.replies = comment.replies.map((reply) => ({
+        id: reply.id,
+        taskId: reply.taskId,
+        userId: reply.userId,
+        parentCommentId: reply.parentCommentId,
+        user: {
+          id: reply.user.id,
+          username: reply.user.username,
+          fullName: reply.user.fullName,
+          avatarUrl: reply.user.avatarUrl,
+        },
+        content: reply.content,
+        isEdited: reply.isEdited,
+        createdAt: reply.createdAt,
+        updatedAt: reply.updatedAt,
+      }));
+    }
+
+    return formattedComment;
   }
 
   /**
