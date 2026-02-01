@@ -60,6 +60,5 @@ export class CreateProjectDto {
 
   @IsArray()
   @IsNotEmpty()
-  @IsString({ each: true })
-  skillIds: string[];
+  skills: Array<{ skillId: string; isMandatory: boolean }>;
 }

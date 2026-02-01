@@ -81,7 +81,7 @@ export class ProjectsService {
     await this.updateProjectRelations(
       savedProject.id,
       createProjectDto.categoryIds,
-      createProjectDto.skillIds,
+      createProjectDto.skills,
     );
 
     // Return formatted project with all relations
@@ -385,11 +385,11 @@ export class ProjectsService {
       );
     }
 
-    if ('skillIds' in updateProjectDto && updateProjectDto.skillIds) {
+    if ('skills' in updateProjectDto && updateProjectDto.skills) {
       await this.updateProjectRelations(
         id,
         undefined,
-        updateProjectDto.skillIds,
+        updateProjectDto.skills,
       );
     }
 
@@ -457,7 +457,7 @@ export class ProjectsService {
   private async updateProjectRelations(
     projectId: string,
     categoryIds?: string[],
-    skillIds?: string[],
+    skills?: Array<{ skillId: string; isMandatory: boolean }>,
   ): Promise<void> {
     // Update categories
     if (categoryIds && categoryIds.length > 0) {
@@ -475,16 +475,16 @@ export class ProjectsService {
     }
 
     // Update skills
-    if (skillIds && skillIds.length > 0) {
+    if (skills && skills.length > 0) {
       // Delete existing skills for this project
       await this.projectSkillRepository.delete({ projectId });
 
-      // Insert new skills
-      const projectSkills = skillIds.map((skillId) =>
+      // Insert new skills with isMandatory flag
+      const projectSkills = skills.map((skill) =>
         this.projectSkillRepository.create({
           projectId,
-          skillId,
-          isMandatory: false,
+          skillId: skill.skillId,
+          isMandatory: skill.isMandatory,
         }),
       );
       await this.projectSkillRepository.save(projectSkills);

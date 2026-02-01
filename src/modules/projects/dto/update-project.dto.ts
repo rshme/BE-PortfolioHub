@@ -37,8 +37,7 @@ export class UpdateProjectDto implements Partial<CreateProjectDto> {
 
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  skillIds?: string[];
+  skills?: Array<{ skillId: string; isMandatory: boolean }>;
 
   @IsBoolean()
   @IsOptional()
