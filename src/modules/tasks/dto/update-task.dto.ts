@@ -20,6 +20,10 @@ export class UpdateTaskDto {
   @IsOptional()
   description?: string;
 
+  @IsUUID()
+  @IsOptional()
+  milestoneId?: string;
+
   @IsEnum(TaskPriority)
   @IsOptional()
   priority?: TaskPriority;
