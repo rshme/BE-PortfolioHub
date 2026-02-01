@@ -4,9 +4,11 @@ import {
   IsEnum,
   IsArray,
   IsDateString,
+  IsUUID,
   MaxLength,
 } from 'class-validator';
 import { TaskPriority } from '../../../common/enums/task-priority.enum';
+import { TaskStatus } from '../../../common/enums/task-status.enum';
 
 export class UpdateTaskDto {
   @IsString()
@@ -21,6 +23,14 @@ export class UpdateTaskDto {
   @IsEnum(TaskPriority)
   @IsOptional()
   priority?: TaskPriority;
+
+  @IsEnum(TaskStatus)
+  @IsOptional()
+  status?: TaskStatus;
+
+  @IsUUID()
+  @IsOptional()
+  assignedToId?: string;
 
   @IsDateString()
   @IsOptional()
