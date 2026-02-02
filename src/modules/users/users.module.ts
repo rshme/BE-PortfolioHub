@@ -16,6 +16,7 @@ import { Task } from '../tasks/entities/task.entity';
 import { Testimonial } from '../testimonials/entities/testimonial.entity';
 import { Skill } from '../skills/entities/skill.entity';
 import { Category } from '../categories/entities/category.entity';
+import { Organization } from '../organizations/entities/organization.entity';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { Category } from '../categories/entities/category.entity';
       Testimonial,
       Skill,
       Category,
+      Organization,
     ]),
     ConfigModule,
     forwardRef(() => AuthModule),

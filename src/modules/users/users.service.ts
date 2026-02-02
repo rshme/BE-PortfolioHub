@@ -25,6 +25,7 @@ import { UserInterest } from './entities/user-interest.entity';
 import { Testimonial } from '../testimonials/entities/testimonial.entity';
 import { Skill } from '../skills/entities/skill.entity';
 import { Category } from '../categories/entities/category.entity';
+import { Organization } from '../organizations/entities/organization.entity';
 
 @Injectable()
 export class UsersService {
@@ -49,6 +50,8 @@ export class UsersService {
     private readonly skillRepository: Repository<Skill>,
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
+    @InjectRepository(Organization)
+    private readonly organizationRepository: Repository<Organization>,
     @InjectRepository(Testimonial)
     private readonly testimonialRepository: Repository<Testimonial>,
   ) {}
@@ -156,34 +159,28 @@ export class UsersService {
   }
 
   /**
-   * Update user profile
+   * Update user profile (non-authentication fields only)
    */
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
     const user = await this.findByIdOrFail(id);
 
-    // Check if email is being updated and already exists
-    if (updateUserDto.email && updateUserDto.email !== user.email) {
-      const existingUserByEmail = await this.usersRepository.findOne({
-        where: { email: updateUserDto.email, id: Not(id) },
-      });
+    // Validate organization if organizationId is provided
+    if (updateUserDto.organizationId !== undefined) {
+      if (updateUserDto.organizationId) {
+        const organization = await this.organizationRepository.findOne({
+          where: { id: updateUserDto.organizationId },
+        });
 
-      if (existingUserByEmail) {
-        throw new ConflictException('Email is already in use');
+        if (!organization) {
+          throw new NotFoundException(
+            `Organization with ID ${updateUserDto.organizationId} not found`,
+          );
+        }
       }
+      // If organizationId is null or empty string, it's valid (removing organization)
     }
 
-    // Check if username is being updated and already exists
-    if (updateUserDto.username && updateUserDto.username !== user.username) {
-      const existingUserByUsername = await this.usersRepository.findOne({
-        where: { username: updateUserDto.username, id: Not(id) },
-      });
-
-      if (existingUserByUsername) {
-        throw new ConflictException('Username is already in use');
-      }
-    }
-
-    // Update user properties
+    // Update user properties (only non-authentication fields)
     Object.assign(user, updateUserDto);
 
     return await this.usersRepository.save(user);
