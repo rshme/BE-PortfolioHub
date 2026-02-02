@@ -95,6 +95,9 @@ export class User {
   @OneToMany('UserSkill', 'user')
   skills: any[];
 
+  @OneToMany('UserInterest', 'user')
+  interests: any[];
+
   @OneToMany('Notification', 'user')
   notifications: any[];
 

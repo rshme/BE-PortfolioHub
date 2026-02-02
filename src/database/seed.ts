@@ -6,6 +6,7 @@ import { seedSkills } from './seeders/skill.seeder';
 import { seedBadges } from './seeders/badge.seeder';
 import { seedUserSkills } from './seeders/user-skill.seeder';
 import { seedUserBadges } from './seeders/user-badge.seeder';
+import { seedUserInterests } from './seeders/user-interest.seeder';
 import { seedProjects } from './seeders/project.seeder';
 import { seedProjectCategories } from './seeders/project-category.seeder';
 import { seedProjectSkills } from './seeders/project-skill.seeder';
@@ -61,6 +62,11 @@ const runSeeders = async () => {
     // Run User Badges Seeder
     console.log('🏅 Running User Badges Seeder...');
     await seedUserBadges(dataSource);
+    console.log('');
+
+    // Run User Interests Seeder
+    console.log('🎯 Running User Interests Seeder...');
+    await seedUserInterests(dataSource);
     console.log('');
 
     // Run Testimonial Seeder

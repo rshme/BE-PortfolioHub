@@ -30,4 +30,7 @@ export class Category {
     (projectCategory) => projectCategory.category,
   )
   projects: ProjectCategory[];
+
+  @OneToMany('UserInterest', 'category')
+  userInterests: any[];
 }

@@ -6,6 +6,7 @@ import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { UserBadge } from './entities/user-badge.entity';
 import { UserSkill } from './entities/user-skill.entity';
+import { UserInterest } from './entities/user-interest.entity';
 import { CloudinaryService } from '../../config/cloudinary.service';
 import { AuthModule } from '../auth/auth.module';
 import { Project } from '../projects/entities/project.entity';
@@ -20,6 +21,7 @@ import { Testimonial } from '../testimonials/entities/testimonial.entity';
       User,
       UserBadge,
       UserSkill,
+      UserInterest,
       Project,
       ProjectVolunteer,
       ProjectMentor,
