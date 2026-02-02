@@ -25,6 +25,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
   UpdateUserDto,
   UpdatePasswordDto,
+  UpdateOnboardingProfileDto,
   UserResponseDto,
   PublicUserResponseDto,
   VolunteerProfileResponseDto,
@@ -133,6 +134,27 @@ export class UsersController {
       statusCode: HttpStatus.OK,
       message: 'Password updated successfully',
       data: null,
+    };
+  }
+
+  /**
+   * Update current user onboarding profile (skills, interests, bio, etc)
+   * PUT /users/profile/onboarding
+   */
+  @Put('profile/onboarding')
+  @UseGuards(JwtAuthGuard)
+  async updateOnboardingProfile(
+    @Req() req,
+    @Body() updateOnboardingProfileDto: UpdateOnboardingProfileDto,
+  ): Promise<ApiResponse<UserResponseDto>> {
+    const user = await this.usersService.updateOnboardingProfile(
+      req.user.id,
+      updateOnboardingProfileDto,
+    );
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Onboarding profile updated successfully',
+      data: plainToInstance(UserResponseDto, user),
     };
   }
 

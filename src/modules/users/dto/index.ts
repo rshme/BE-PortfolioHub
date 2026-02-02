@@ -1,6 +1,7 @@
 export * from './create-user.dto';
 export * from './update-user.dto';
 export * from './update-password.dto';
+export * from './update-onboarding-profile.dto';
 export * from './user-response.dto';
 export * from './public-user-response.dto';
 export * from './volunteer-profile-response.dto';

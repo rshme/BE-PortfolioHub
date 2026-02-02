@@ -8,7 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not, In } from 'typeorm';
 import { User } from './entities/user.entity';
-import { CreateUserDto, UpdateUserDto, UpdatePasswordDto } from './dto';
+import { CreateUserDto, UpdateUserDto, UpdatePasswordDto, UpdateOnboardingProfileDto } from './dto';
 import * as bcrypt from 'bcrypt';
 import { Project } from '../projects/entities/project.entity';
 import { ProjectVolunteer } from '../projects/entities/project-volunteer.entity';
@@ -21,7 +21,10 @@ import { TaskStatus } from '../../common/enums/task-status.enum';
 import { ProjectStatus } from '../../common/enums/project-status.enum';
 import { UserBadge } from './entities/user-badge.entity';
 import { UserSkill } from './entities/user-skill.entity';
+import { UserInterest } from './entities/user-interest.entity';
 import { Testimonial } from '../testimonials/entities/testimonial.entity';
+import { Skill } from '../skills/entities/skill.entity';
+import { Category } from '../categories/entities/category.entity';
 
 @Injectable()
 export class UsersService {
@@ -40,6 +43,12 @@ export class UsersService {
     private readonly userBadgeRepository: Repository<UserBadge>,
     @InjectRepository(UserSkill)
     private readonly userSkillRepository: Repository<UserSkill>,
+    @InjectRepository(UserInterest)
+    private readonly userInterestRepository: Repository<UserInterest>,
+    @InjectRepository(Skill)
+    private readonly skillRepository: Repository<Skill>,
+    @InjectRepository(Category)
+    private readonly categoryRepository: Repository<Category>,
     @InjectRepository(Testimonial)
     private readonly testimonialRepository: Repository<Testimonial>,
   ) {}
@@ -210,6 +219,105 @@ export class UsersService {
 
     // Update password
     await this.usersRepository.update(id, { password: hashedPassword });
+  }
+
+  /**
+   * Update user onboarding profile with skills and interests
+   */
+  async updateOnboardingProfile(
+    id: string,
+    updateOnboardingProfileDto: UpdateOnboardingProfileDto,
+  ): Promise<User> {
+    const user = await this.findByIdOrFail(id);
+
+    // Prepare socialLinks update
+    const socialLinksUpdate: Record<string, string> = user.socialLinks ? { ...user.socialLinks } : {};
+    
+    if (updateOnboardingProfileDto.github) {
+      socialLinksUpdate.github = updateOnboardingProfileDto.github;
+    }
+    
+    if (updateOnboardingProfileDto.linkedin) {
+      socialLinksUpdate.linkedin = updateOnboardingProfileDto.linkedin;
+    }
+
+    // Update basic profile fields
+    const updateData: Partial<User> = {};
+    
+    if (updateOnboardingProfileDto.bio !== undefined) {
+      updateData.bio = updateOnboardingProfileDto.bio;
+    }
+    
+    if (updateOnboardingProfileDto.location !== undefined) {
+      // Store location in socialLinks as well since there's no location field in User entity
+      socialLinksUpdate.location = updateOnboardingProfileDto.location;
+    }
+    
+    if (Object.keys(socialLinksUpdate).length > 0) {
+      updateData.socialLinks = socialLinksUpdate;
+    }
+
+    // Update user basic fields if there are any changes
+    if (Object.keys(updateData).length > 0) {
+      await this.usersRepository.update(id, updateData);
+    }
+
+    // Handle skills update
+    if (updateOnboardingProfileDto.skills !== undefined) {
+      // Validate all skills exist
+      if (updateOnboardingProfileDto.skills.length > 0) {
+        const skills = await this.skillRepository.find({
+          where: { id: In(updateOnboardingProfileDto.skills) },
+        });
+
+        if (skills.length !== updateOnboardingProfileDto.skills.length) {
+          throw new BadRequestException('Some skill IDs are invalid');
+        }
+      }
+
+      // Delete existing user skills
+      await this.userSkillRepository.delete({ userId: id });
+
+      // Create new user skills
+      if (updateOnboardingProfileDto.skills.length > 0) {
+        const userSkills = updateOnboardingProfileDto.skills.map((skillId) => ({
+          userId: id,
+          skillId: skillId,
+        }));
+        await this.userSkillRepository.save(userSkills);
+      }
+    }
+
+    // Handle interests update
+    if (updateOnboardingProfileDto.interests !== undefined) {
+      // Validate all categories exist
+      if (updateOnboardingProfileDto.interests.length > 0) {
+        const categories = await this.categoryRepository.find({
+          where: { id: In(updateOnboardingProfileDto.interests) },
+        });
+
+        if (categories.length !== updateOnboardingProfileDto.interests.length) {
+          throw new BadRequestException('Some interest IDs are invalid');
+        }
+      }
+
+      // Delete existing user interests
+      await this.userInterestRepository.delete({ userId: id });
+
+      // Create new user interests
+      if (updateOnboardingProfileDto.interests.length > 0) {
+        const userInterests = updateOnboardingProfileDto.interests.map(
+          (categoryId) => ({
+            userId: id,
+            categoryId: categoryId,
+          }),
+        );
+        await this.userInterestRepository.save(userInterests);
+      }
+    }
+
+    // Return updated user
+    return await this.findByIdOrFail(id);
   }
 
   /**
