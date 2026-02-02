@@ -25,7 +25,8 @@
     "migration:revert": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:revert -d src/config/typeorm.config.ts",
     "migration:user-interests": "ts-node -r tsconfig-paths/register src/database/migrate-user-interests.ts",
     "db:seed": "ts-node -r tsconfig-paths/register src/database/seed.ts",
-    "db:seed:task-comments": "ts-node -r tsconfig-paths/register src/database/seeders/run-task-comment.seeder.ts",
+    "db:seed:tasks": "ts-node -r tsconfig-paths/register src/database/seed-tasks.ts",
+    "db:seed:task-comments": "ts-node -r tsconfig-paths/register src/database/seed-task-comments.ts",
     "db:seed:user-interests": "ts-node -r tsconfig-paths/register src/database/seed-user-interests.ts"
   },
   "dependencies": {

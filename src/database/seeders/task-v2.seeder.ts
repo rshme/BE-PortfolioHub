@@ -132,7 +132,10 @@ export const seedTasks = async (dataSource: DataSource): Promise<void> => {
     // Get milestones for this project
     const projectMilestones = milestones.filter(m => m.projectId === project.id);
     
-    if (projectMilestones.length === 0) continue;
+    if (projectMilestones.length === 0) {
+      console.log(`⚠️  No milestones found for project ${project.id}`);
+      continue;
+    }
 
     const phase1 = projectMilestones.find(m => m.status === MilestoneStatus.COMPLETED);
     const phase2 = projectMilestones.find(m => m.status === MilestoneStatus.IN_PROGRESS);

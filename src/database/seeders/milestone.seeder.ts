@@ -78,6 +78,11 @@ export const seedMilestones = async (dataSource: DataSource) => {
   const savedMilestones = await milestoneRepository.save(milestonesToSeed);
 
   console.log(`✅ Seeded ${savedMilestones.length} milestones across ${projects.length} projects`);
+  
+  // Verify milestones were created
+  const verifyCount = await milestoneRepository.count();
+  console.log(`   📊 Total milestones in database: ${verifyCount}`);
+  
   console.log(`   - ${savedMilestones.filter(m => m.status === MilestoneStatus.COMPLETED).length} completed`);
   console.log(`   - ${savedMilestones.filter(m => m.status === MilestoneStatus.IN_PROGRESS).length} in progress`);
   console.log(`   - ${savedMilestones.filter(m => m.status === MilestoneStatus.NOT_STARTED).length} not started`);
