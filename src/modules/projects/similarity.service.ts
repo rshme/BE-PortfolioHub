@@ -14,6 +14,8 @@ import {
   ProjectRecommendation,
 } from './interfaces/similarity.interface';
 import { ProjectStatus } from '../../common/enums/project-status.enum';
+import { VolunteerStatus } from '../../common/enums/volunteer-status.enum';
+import { MentorStatus } from '../../common/enums/mentor-status.enum';
 
 @Injectable()
 export class SimilarityService {
@@ -239,6 +241,10 @@ export class SimilarityService {
       where: { id: In(projectIds) },
       relations: [
         'creator',
+        'volunteers',
+        'volunteers.user',
+        'mentors',
+        'mentors.user',
         'skills',
         'skills.skill',
         'categories',
@@ -252,7 +258,7 @@ export class SimilarityService {
         const project = projects.find((p) => p.id === similarity.projectId);
         return {
           ...similarity,
-          project,
+          project: project ? this.formatProjectResponse(project) : project,
         };
       },
     );
@@ -261,6 +267,125 @@ export class SimilarityService {
     await this.cacheManager.set(cacheKey, recommendations, this.CACHE_TTL);
 
     return recommendations;
+  }
+
+  /**
+   * Helper method to format project response without sensitive data
+   */
+  private formatProjectResponse(project: any): any {
+    // Format creator
+    if (project.creator) {
+      const { password, role, email, ...safeCreatorData } = project.creator;
+      project.creator = safeCreatorData;
+    }
+
+    // Format volunteers - extract only ACTIVE volunteers
+    if (
+      project.volunteers &&
+      Array.isArray(project.volunteers) &&
+      project.volunteers.length > 0
+    ) {
+      const activeVolunteers = project.volunteers.filter(
+        (v: any) => v.status === VolunteerStatus.ACTIVE,
+      );
+      
+      if (activeVolunteers.length > 0) {
+        project.volunteers = activeVolunteers.map((v: any) => {
+          const volunteer: any = {
+            id: v.id,
+            status: v.status,
+            contributionScore: v.contributionScore || 0,
+            tasksCompleted: v.tasksCompleted || 0,
+            joinedAt: v.joinedAt,
+            leftAt: v.leftAt,
+          };
+
+          if (v.user) {
+            const { password, role, email, ...safeUserData } = v.user;
+            volunteer.user = safeUserData;
+          }
+
+          return volunteer;
+        });
+      } else {
+        project.volunteers = null;
+      }
+    } else {
+      project.volunteers = null;
+    }
+
+    // Format mentors - extract only ACTIVE mentors
+    if (
+      project.mentors &&
+      Array.isArray(project.mentors) &&
+      project.mentors.length > 0
+    ) {
+      const activeMentors = project.mentors.filter(
+        (m: any) => m.status === MentorStatus.ACTIVE,
+      );
+      
+      if (activeMentors.length > 0) {
+        project.mentors = activeMentors.map((m: any) => {
+          const mentor: any = {
+            id: m.id,
+            status: m.status,
+            expertiseAreas: m.expertiseAreas,
+            joinedAt: m.joinedAt,
+            leftAt: m.leftAt,
+          };
+
+          if (m.user) {
+            const { password, role, email, ...safeUserData } = m.user;
+            mentor.user = safeUserData;
+          }
+
+          return mentor;
+        });
+      } else {
+        project.mentors = null;
+      }
+    } else {
+      project.mentors = null;
+    }
+
+    // Format skills - extract only skill data
+    if (
+      project.skills &&
+      Array.isArray(project.skills) &&
+      project.skills.length > 0
+    ) {
+      project.skills = project.skills.map((ps: any) => ({
+        id: ps.skill?.id || ps.skillId,
+        name: ps.skill?.name,
+        icon: ps.skill?.icon,
+        isMandatory: ps.isMandatory,
+      }));
+    } else {
+      project.skills = null;
+    }
+
+    // Format categories - extract only category data
+    if (
+      project.categories &&
+      Array.isArray(project.categories) &&
+      project.categories.length > 0
+    ) {
+      project.categories = project.categories.map((pc: any) => ({
+        id: pc.category?.id || pc.categoryId,
+        name: pc.category?.name,
+        icon: pc.category?.icon,
+        description: pc.category?.description,
+      }));
+    } else {
+      project.categories = null;
+    }
+
+    // Add volunteer count
+    project.volunteerCount = project.volunteers && Array.isArray(project.volunteers) 
+      ? project.volunteers.length 
+      : 0;
+
+    return project;
   }
 
   /**
