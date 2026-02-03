@@ -1,123 +1,142 @@
 import { DataSource } from 'typeorm';
 import { dataSourceOptions } from '../config/typeorm.config';
-import { UserSeeder } from './seeders/user.seeder';
-import { seedCategories } from './seeders/category.seeder';
-import { seedSkills } from './seeders/skill.seeder';
-import { seedBadges } from './seeders/badge.seeder';
-import { seedUserSkills } from './seeders/user-skill.seeder';
-import { seedUserBadges } from './seeders/user-badge.seeder';
-import { seedUserInterests } from './seeders/user-interest.seeder';
-import { seedProjects } from './seeders/project.seeder';
-import { seedProjectCategories } from './seeders/project-category.seeder';
-import { seedProjectSkills } from './seeders/project-skill.seeder';
-import { seedProjectMentors } from './seeders/project-mentor.seeder';
-import { seedProjectVolunteers } from './seeders/project-volunteer.seeder';
-import { seedMilestones } from './seeders/milestone.seeder';
-import { seedTasks } from './seeders/task-v2.seeder';
-import { OrganizationSeeder } from './seeders/organization.seeder';
-import { TestimonialSeeder } from './seeders/testimonial.seeder';
-import { TaskCommentSeeder } from './seeders/task-comment.seeder';
+
+// Import all seeders
+import { CategorySeeder } from './seeders/01-category.seeder';
+import { SkillSeeder } from './seeders/02-skill.seeder';
+import { BadgeSeeder } from './seeders/03-badge.seeder';
+import { OrganizationSeeder } from './seeders/04-organization.seeder';
+import { UserSeeder } from './seeders/05-user.seeder';
+import { UserSkillSeeder } from './seeders/06-user-skill.seeder';
+import { UserBadgeSeeder } from './seeders/07-user-badge.seeder';
+import { UserInterestSeeder } from './seeders/08-user-interest.seeder';
+import { ProjectSeeder } from './seeders/09-project.seeder';
+import { ProjectCategorySeeder } from './seeders/10-project-category.seeder';
+import { ProjectSkillSeeder } from './seeders/11-project-skill.seeder';
+import { ProjectMentorSeeder } from './seeders/12-project-mentor.seeder';
+import { ProjectVolunteerSeeder } from './seeders/13-project-volunteer.seeder';
+import { TestimonialSeeder } from './seeders/14-testimonial.seeder';
+import { MilestoneSeeder } from './seeders/15-milestone.seeder';
+import { TaskSeeder } from './seeders/16-task.seeder';
+import { TaskCommentSeeder } from './seeders/17-task-comment.seeder';
 
 const runSeeders = async () => {
   console.log('🌱 Starting database seeding...\n');
+  console.log('═'.repeat(60));
 
   const dataSource = new DataSource(dataSourceOptions);
 
   try {
     await dataSource.initialize();
     console.log('✅ Database connection established\n');
+    console.log('═'.repeat(60));
 
-    // Run Organization Seeder
-    console.log('🏢 Running Organization Seeder...');
+    // Stage 1: Reference Tables (No dependencies)
+    console.log('\n📦 STAGE 1: Reference Tables\n');
+    
+    console.log('📂 [1/3] Seeding Categories...');
+    const categorySeeder = new CategorySeeder();
+    await categorySeeder.run(dataSource);
+    
+    console.log('🎯 [2/3] Seeding Skills...');
+    const skillSeeder = new SkillSeeder();
+    await skillSeeder.run(dataSource);
+    
+    console.log('🏅 [3/3] Seeding Badges...');
+    const badgeSeeder = new BadgeSeeder();
+    await badgeSeeder.run(dataSource);
+
+    // Stage 2: Organizations and Users
+    console.log('\n═'.repeat(60));
+    console.log('👥 STAGE 2: Organizations & Users\n');
+    
+    console.log('🏢 [1/2] Seeding Organizations...');
     const organizationSeeder = new OrganizationSeeder();
     await organizationSeeder.run(dataSource);
-    console.log('');
-
-    // Run Category Seeder
-    console.log('📂 Running Category Seeder...');
-    await seedCategories(dataSource);
-    console.log('');
-
-    // Run Skill Seeder
-    console.log('🎯 Running Skill Seeder...');
-    await seedSkills(dataSource);
-    console.log('');
-
-    // Run Badge Seeder
-    console.log('🏅 Running Badge Seeder...');
-    await seedBadges(dataSource);
-    console.log('');
-
-    // Run User Seeder
-    console.log('👥 Running User Seeder...');
+    
+    console.log('👤 [2/2] Seeding Users...');
     const userSeeder = new UserSeeder();
     await userSeeder.run(dataSource);
-    console.log('');
 
-    // Run User Skills Seeder
-    console.log('🎯 Running User Skills Seeder...');
-    await seedUserSkills(dataSource);
-    console.log('');
+    // Stage 3: User Relations
+    console.log('\n═'.repeat(60));
+    console.log('🔗 STAGE 3: User Relations\n');
+    
+    console.log('⚡ [1/3] Seeding User Skills...');
+    const userSkillSeeder = new UserSkillSeeder();
+    await userSkillSeeder.run(dataSource);
+    
+    console.log('🎖️  [2/3] Seeding User Badges...');
+    const userBadgeSeeder = new UserBadgeSeeder();
+    await userBadgeSeeder.run(dataSource);
+    
+    console.log('💡 [3/3] Seeding User Interests...');
+    const userInterestSeeder = new UserInterestSeeder();
+    await userInterestSeeder.run(dataSource);
 
-    // Run User Badges Seeder
-    console.log('🏅 Running User Badges Seeder...');
-    await seedUserBadges(dataSource);
-    console.log('');
+    // Stage 4: Projects
+    console.log('\n═'.repeat(60));
+    console.log('📊 STAGE 4: Projects\n');
+    
+    console.log('🚀 [1/1] Seeding Projects...');
+    const projectSeeder = new ProjectSeeder();
+    await projectSeeder.run(dataSource);
 
-    // Run User Interests Seeder
-    console.log('🎯 Running User Interests Seeder...');
-    await seedUserInterests(dataSource);
-    console.log('');
+    // Stage 5: Project Relations
+    console.log('\n═'.repeat(60));
+    console.log('🔗 STAGE 5: Project Relations\n');
+    
+    console.log('📁 [1/4] Seeding Project Categories...');
+    const projectCategorySeeder = new ProjectCategorySeeder();
+    await projectCategorySeeder.run(dataSource);
+    
+    console.log('⚙️  [2/4] Seeding Project Skills...');
+    const projectSkillSeeder = new ProjectSkillSeeder();
+    await projectSkillSeeder.run(dataSource);
+    
+    console.log('🎓 [3/4] Seeding Project Mentors...');
+    const projectMentorSeeder = new ProjectMentorSeeder();
+    await projectMentorSeeder.run(dataSource);
+    
+    console.log('🙋 [4/4] Seeding Project Volunteers...');
+    const projectVolunteerSeeder = new ProjectVolunteerSeeder();
+    await projectVolunteerSeeder.run(dataSource);
 
-    // Run Testimonial Seeder
-    console.log('💬 Running Testimonial Seeder...');
+    // Stage 6: Testimonials
+    console.log('\n═'.repeat(60));
+    console.log('💬 STAGE 6: Testimonials\n');
+    
+    console.log('⭐ [1/1] Seeding Testimonials...');
     const testimonialSeeder = new TestimonialSeeder();
     await testimonialSeeder.run(dataSource);
-    console.log('');
 
-    // Run Project Seeder
-    console.log('📊 Running Project Seeder...');
-    await seedProjects(dataSource);
-    console.log('');
+    // Stage 7: Milestones and Tasks
+    console.log('\n═'.repeat(60));
+    console.log('📋 STAGE 7: Milestones & Tasks\n');
+    
+    console.log('🎯 [1/2] Seeding Milestones...');
+    const milestoneSeeder = new MilestoneSeeder();
+    await milestoneSeeder.run(dataSource);
+    
+    console.log('✅ [2/2] Seeding Tasks...');
+    const taskSeeder = new TaskSeeder();
+    await taskSeeder.run(dataSource);
 
-    // Run Project Category Seeder
-    console.log('🔗 Running Project Category Seeder...');
-    await seedProjectCategories(dataSource);
-    console.log('');
-
-    // Run Project Skill Seeder
-    console.log('⚡ Running Project Skill Seeder...');
-    await seedProjectSkills(dataSource);
-    console.log('');
-
-    // Run Project Mentor Seeder
-    console.log('🎓 Running Project Mentor Seeder...');
-    await seedProjectMentors(dataSource);
-    console.log('');
-
-    // Run Project Volunteer Seeder
-    console.log('🙋 Running Project Volunteer Seeder...');
-    await seedProjectVolunteers(dataSource);
-    console.log('');
-
-    // Run Milestone Seeder
-    console.log('🎯 Running Milestone Seeder...');
-    await seedMilestones(dataSource);
-    console.log('');
-
-    // Run Task Seeder
-    console.log('✅ Running Task Seeder...');
-    await seedTasks(dataSource);
-
-    // Run Task Comment Seeder
-    console.log('💬 Running Task Comment Seeder...');
+    // Stage 8: Task Comments
+    console.log('\n═'.repeat(60));
+    console.log('💭 STAGE 8: Task Comments\n');
+    
+    console.log('💬 [1/1] Seeding Task Comments...');
     const taskCommentSeeder = new TaskCommentSeeder();
     await taskCommentSeeder.run(dataSource);
-    console.log('');
 
+    console.log('\n═'.repeat(60));
     console.log('\n🎉 Database seeding completed successfully!');
+    console.log('═'.repeat(60));
   } catch (error) {
+    console.error('\n═'.repeat(60));
     console.error('❌ Error during seeding:', error);
+    console.error('═'.repeat(60));
     process.exit(1);
   } finally {
     await dataSource.destroy();
