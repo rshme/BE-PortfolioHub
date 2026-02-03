@@ -4,6 +4,7 @@ import {
   IsUrl,
   IsObject,
   IsUUID,
+  IsArray,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -35,4 +36,14 @@ export class UpdateUserDto {
   @IsUUID('4', { message: 'Organization ID harus berupa UUID valid' })
   @IsOptional()
   organizationId?: string;
+
+  @IsArray({ message: 'Skills harus berupa array' })
+  @IsUUID('4', { each: true, message: 'Setiap skill ID harus berupa UUID valid' })
+  @IsOptional()
+  skills?: string[];
+
+  @IsArray({ message: 'Interests harus berupa array' })
+  @IsUUID('4', { each: true, message: 'Setiap interest ID harus berupa UUID valid' })
+  @IsOptional()
+  interests?: string[];
 }

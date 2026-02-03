@@ -2,6 +2,22 @@ import { Expose, Type } from 'class-transformer';
 import { UserRole } from '../../../common/enums/user-role.enum';
 import { ProjectStatus } from '../../../common/enums/project-status.enum';
 
+export class SkillDto {
+  @Expose()
+  id: string;
+
+  @Expose()
+  name: string;
+}
+
+export class InterestDto {
+  @Expose()
+  id: string;
+
+  @Expose()
+  name: string;
+}
+
 export class AchievementDto {
   @Expose()
   id: string;
@@ -102,7 +118,13 @@ export class VolunteerProfileResponseDto {
 
   // === Skills ===
   @Expose()
-  skills: string[];
+  @Type(() => SkillDto)
+  skills: SkillDto[];
+
+  // === Interests ===
+  @Expose()
+  @Type(() => InterestDto)
+  interests: InterestDto[];
 
   // === Achievements (User badges) ===
   @Expose()

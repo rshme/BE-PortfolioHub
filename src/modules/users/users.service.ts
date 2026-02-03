@@ -180,10 +180,67 @@ export class UsersService {
       // If organizationId is null or empty string, it's valid (removing organization)
     }
 
-    // Update user properties (only non-authentication fields)
-    Object.assign(user, updateUserDto);
+    // Extract skills and interests from updateUserDto to handle separately
+    const { skills, interests, ...userUpdateData } = updateUserDto;
 
-    return await this.usersRepository.save(user);
+    // Update user properties (only non-authentication fields)
+    Object.assign(user, userUpdateData);
+    await this.usersRepository.save(user);
+
+    // Handle skills update
+    if (skills !== undefined) {
+      // Validate all skills exist
+      if (skills.length > 0) {
+        const validSkills = await this.skillRepository.find({
+          where: { id: In(skills) },
+        });
+
+        if (validSkills.length !== skills.length) {
+          throw new BadRequestException('Some skill IDs are invalid');
+        }
+      }
+
+      // Delete existing user skills
+      await this.userSkillRepository.delete({ userId: id });
+
+      // Create new user skills
+      if (skills.length > 0) {
+        const userSkills = skills.map((skillId) => ({
+          userId: id,
+          skillId: skillId,
+        }));
+        await this.userSkillRepository.save(userSkills);
+      }
+    }
+
+    // Handle interests update
+    if (interests !== undefined) {
+      // Validate all categories exist
+      if (interests.length > 0) {
+        const categories = await this.categoryRepository.find({
+          where: { id: In(interests) },
+        });
+
+        if (categories.length !== interests.length) {
+          throw new BadRequestException('Some interest IDs are invalid');
+        }
+      }
+
+      // Delete existing user interests
+      await this.userInterestRepository.delete({ userId: id });
+
+      // Create new user interests
+      if (interests.length > 0) {
+        const userInterests = interests.map((categoryId) => ({
+          userId: id,
+          categoryId: categoryId,
+        }));
+        await this.userInterestRepository.save(userInterests);
+      }
+    }
+
+    // Return updated user with relations
+    return await this.findByIdOrFail(id);
   }
 
   /**
@@ -788,7 +845,20 @@ export class UsersService {
       where: { userId: user.id },
       relations: ['skill'],
     });
-    const skills = userSkills.map((us) => us.skill.name);
+    const skills = userSkills.map((us) => ({
+      id: us.skill.id,
+      name: us.skill.name,
+    }));
+
+    // Get user interests
+    const userInterests = await this.userInterestRepository.find({
+      where: { userId: user.id },
+      relations: ['category'],
+    });
+    const interests = userInterests.map((ui) => ({
+      id: ui.category.id,
+      name: ui.category.name,
+    }));
 
     // Get user badges (achievements)
     const userBadges = await this.userBadgeRepository.find({
@@ -891,6 +961,9 @@ export class UsersService {
       // Skills
       skills,
 
+      // Interests
+      interests,
+
       // Achievements
       achievements,
 
@@ -936,7 +1009,20 @@ export class UsersService {
       where: { userId: user.id },
       relations: ['skill'],
     });
-    const skills = userSkills.map((us) => us.skill.name);
+    const skills = userSkills.map((us) => ({
+      id: us.skill.id,
+      name: us.skill.name,
+    }));
+
+    // Get interests
+    const userInterests = await this.userInterestRepository.find({
+      where: { userId: user.id },
+      relations: ['category'],
+    });
+    const interests = userInterests.map((ui) => ({
+      id: ui.category.id,
+      name: ui.category.name,
+    }));
 
     // Get achievements/badges
     const userBadges = await this.userBadgeRepository.find({
@@ -1075,6 +1161,9 @@ export class UsersService {
 
       // Skills
       skills,
+
+      // Interests
+      interests,
 
       // Social Links
       socialLinks: user.socialLinks || {},
