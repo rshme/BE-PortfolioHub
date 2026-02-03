@@ -214,6 +214,18 @@ export class ProjectsService {
   async findOne(id: string, userId?: string): Promise<Project> {
     const project = await this.findOneRaw(id);
 
+    // Calculate volunteer count - count only ACTIVE volunteers (same as findAll)
+    const volunteerCount = project.volunteers
+      ? project.volunteers.filter((v) => v.status === VolunteerStatus.ACTIVE)
+          .length
+      : 0;
+
+    // Add volunteer count to project
+    const projectWithCount = {
+      ...project,
+      volunteerCount,
+    };
+
     // Check if user has access before formatting
     let hasAccess = false;
     if (userId) {
@@ -221,7 +233,7 @@ export class ProjectsService {
     }
 
     // Format response to exclude sensitive data and add task stats if has access
-    let formattedProject = await this.formatProjectResponse(project, hasAccess, id);
+    let formattedProject = await this.formatProjectResponse(projectWithCount, hasAccess, id);
 
     // If userId is provided and has access, add general task statistics
     if (hasAccess) {
