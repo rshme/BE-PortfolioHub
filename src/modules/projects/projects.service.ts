@@ -1313,7 +1313,7 @@ export class ProjectsService {
     userRole: UserRole,
     status?: VolunteerStatus,
   ): Promise<ProjectVolunteer[]> {
-    // Only creator and admin can access this endpoint
+    // Creator, admin, and active mentors can access this endpoint
     const project = await this.projectRepository.findOne({
       where: { id: projectId },
     });
@@ -1322,9 +1322,27 @@ export class ProjectsService {
       throw new NotFoundException('Project not found');
     }
 
-    if (userRole !== UserRole.ADMIN && project.creatorId !== userId) {
+    // Check if user has access (admin, creator, or active mentor)
+    const isAdmin = userRole === UserRole.ADMIN;
+    const isCreator = project.creatorId === userId;
+    
+    // Check if user is an active mentor in this project
+    let isActiveMentor = false;
+    if (!isAdmin && !isCreator) {
+      const mentorRecord = await this.projectMentorRepository.findOne({
+        where: {
+          projectId,
+          userId,
+          status: MentorStatus.ACTIVE,
+        },
+      });
+      isActiveMentor = !!mentorRecord;
+    }
+
+    // If user is not admin, creator, or active mentor, throw forbidden error
+    if (!isAdmin && !isCreator && !isActiveMentor) {
       throw new ForbiddenException(
-        'Only project creator and admin can view project volunteers',
+        'Only project creator, admin, and active mentors can view project volunteers',
       );
     }
 
