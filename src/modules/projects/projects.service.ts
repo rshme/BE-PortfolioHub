@@ -943,11 +943,18 @@ export class ProjectsService {
       whereCondition.status = status;
     }
 
-    return this.projectMentorRepository.find({
+    const mentors = await this.projectMentorRepository.find({
       where: whereCondition,
       relations: ['user', 'inviter'],
       order: { joinedAt: 'DESC' },
     });
+
+    // Format response to remove sensitive user data
+    return mentors.map((mentor) => ({
+      ...mentor,
+      user: this.formatUserData(mentor.user),
+      inviter: this.formatUserData(mentor.inviter),
+    }));
   }
 
   /**
@@ -973,11 +980,18 @@ export class ProjectsService {
       );
     }
 
-    return this.projectMentorRepository.find({
+    const pendingMentors = await this.projectMentorRepository.find({
       where: { projectId, status: MentorStatus.PENDING },
       relations: ['user', 'inviter'],
       order: { joinedAt: 'DESC' },
     });
+
+    // Format response to remove sensitive user data
+    return pendingMentors.map((mentor) => ({
+      ...mentor,
+      user: this.formatUserData(mentor.user),
+      inviter: this.formatUserData(mentor.inviter),
+    }));
   }
 
   // ==================== VOLUNTEER OPERATIONS ====================
@@ -1320,11 +1334,18 @@ export class ProjectsService {
       whereCondition.status = status;
     }
 
-    return this.projectVolunteerRepository.find({
+    const volunteers = await this.projectVolunteerRepository.find({
       where: whereCondition,
       relations: ['user', 'inviter'],
       order: { joinedAt: 'DESC' },
     });
+
+    // Format response to remove sensitive user data
+    return volunteers.map((volunteer) => ({
+      ...volunteer,
+      user: this.formatUserData(volunteer.user),
+      inviter: this.formatUserData(volunteer.inviter),
+    }));
   }
 
   /**
@@ -1350,11 +1371,18 @@ export class ProjectsService {
       );
     }
 
-    return this.projectVolunteerRepository.find({
+    const pendingVolunteers = await this.projectVolunteerRepository.find({
       where: { projectId, status: VolunteerStatus.PENDING },
       relations: ['user', 'inviter'],
       order: { joinedAt: 'DESC' },
     });
+
+    // Format response to remove sensitive user data
+    return pendingVolunteers.map((volunteer) => ({
+      ...volunteer,
+      user: this.formatUserData(volunteer.user),
+      inviter: this.formatUserData(volunteer.inviter),
+    }));
   }
 
   /**
