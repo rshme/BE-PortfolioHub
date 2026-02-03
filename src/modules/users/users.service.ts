@@ -562,28 +562,46 @@ export class UsersService {
       relations: ['project', 'project.volunteers'],
     });
 
-    // Count projects by status
-    const totalProjects = mentorProjects.length;
+    // Active projects: IN_PROGRESS status where mentor is ACTIVE
     const activeProjects = mentorProjects.filter(
-      (mp) => mp.status === MentorStatus.ACTIVE,
+      (mp) =>
+        mp.status === MentorStatus.ACTIVE &&
+        mp.project?.status === ProjectStatus.IN_PROGRESS,
     ).length;
+    
+    // Completed projects: COMPLETED status where mentor is ACTIVE
     const completedProjects = mentorProjects.filter(
       (mp) =>
         mp.status === MentorStatus.ACTIVE &&
         mp.project?.status === ProjectStatus.COMPLETED,
     ).length;
-    const pendingApplications = mentorProjects.filter(
-      (mp) => mp.status === MentorStatus.PENDING,
+    
+    // Mentored projects: COMPLETED or CANCELLED status where mentor is ACTIVE
+    const mentoredProjects = mentorProjects.filter(
+      (mp) =>
+        mp.status === MentorStatus.ACTIVE &&
+        (mp.project?.status === ProjectStatus.COMPLETED ||
+          mp.project?.status === ProjectStatus.CANCELLED),
     ).length;
-    const leftProjects = mentorProjects.filter(
-      (mp) => mp.status === MentorStatus.LEFT,
-    ).length;
+    
+    // Total = mentoredProjects + active
+    // Note: mentoredProjects already includes completed projects, so no need to add completedProjectsCount
+    const totalProjects = mentoredProjects + activeProjects;
 
-    // Count total mentees (volunteers in active mentor projects)
+    // Get active mentor projects (mentor status = ACTIVE)
     const activeMentorProjects = mentorProjects.filter(
       (mp) => mp.status === MentorStatus.ACTIVE,
     );
-    const totalMentees = activeMentorProjects.reduce((sum, mp) => {
+
+    // Filter only projects with IN_PROGRESS or ON_HOLD status for mentoring stats
+    const activeMentoringProjects = activeMentorProjects.filter(
+      (mp) =>
+        mp.project?.status === ProjectStatus.IN_PROGRESS ||
+        mp.project?.status === ProjectStatus.ON_HOLD,
+    );
+
+    // Count total mentees (volunteers with ACTIVE status in IN_PROGRESS or ON_HOLD projects)
+    const totalMentees = activeMentoringProjects.reduce((sum, mp) => {
       const activeVolunteers = mp.project?.volunteers?.filter(
         (v: any) => v.status === VolunteerStatus.ACTIVE,
       );
@@ -596,20 +614,23 @@ export class UsersService {
       .flatMap((mp) => mp.expertiseAreas);
     const uniqueExpertiseAreas = [...new Set(allExpertiseAreas)];
 
-    // Get projects where mentor is actively mentoring
-    const activeProjectIds = activeMentorProjects.map((mp) => mp.projectId);
-    const activeProjectDetails = await this.projectRepository.find({
-      where: { id: In(activeProjectIds) },
-      select: ['id', 'name', 'status', 'level'],
-    });
+    // Get projects where mentor is actively mentoring (IN_PROGRESS or ON_HOLD only)
+    const activeMentoringProjectIds = activeMentoringProjects.map((mp) => mp.projectId);
+    const activeProjectDetails = activeMentoringProjectIds.length > 0
+      ? await this.projectRepository.find({
+          where: {
+            id: In(activeMentoringProjectIds),
+            status: In([ProjectStatus.IN_PROGRESS, ProjectStatus.ON_HOLD]),
+          },
+          select: ['id', 'name', 'status', 'level'],
+        })
+      : [];
 
     return {
       projects: {
         total: totalProjects,
         active: activeProjects,
         completed: completedProjects,
-        pending: pendingApplications,
-        left: leftProjects,
       },
       mentoring: {
         totalMentees,
@@ -1039,11 +1060,11 @@ export class UsersService {
       awardedAt: ub.awardedAt,
     }));
 
-    // Get mentor projects with full details
+    // Get all mentor projects where mentor is ACTIVE
     const mentorProjects = await this.projectMentorRepository.find({
       where: { 
         userId: user.id,
-        status: In([MentorStatus.ACTIVE, MentorStatus.PENDING]) 
+        status: MentorStatus.ACTIVE,
       },
       relations: [
         'project', 
@@ -1098,9 +1119,16 @@ export class UsersService {
         })
       : 0;
 
-    // Format mentored projects
+    // Filter mentored projects: Only show COMPLETED or CANCELLED projects where mentor is ACTIVE
+    const completedOrCancelledProjects = mentorProjects.filter(
+      (mp) =>
+        mp.project?.status === ProjectStatus.COMPLETED ||
+        mp.project?.status === ProjectStatus.CANCELLED,
+    );
+
+    // Format mentored projects (only COMPLETED or CANCELLED)
     const mentoredProjects = await Promise.all(
-      mentorProjects.map(async (mp) => {
+      completedOrCancelledProjects.map(async (mp) => {
         // Get project tags (categories + skills)
         const categoryNames = mp.project.categories?.map(
           (pc: any) => pc.category.name,
@@ -1137,8 +1165,18 @@ export class UsersService {
       }),
     );
 
-    // Calculate statistics
-    const projectsMentored = mentorProjects.length;
+    // Calculate statistics for projects
+    const activeProjectsCount = mentorProjects.filter(
+      (mp) => mp.project?.status === ProjectStatus.IN_PROGRESS,
+    ).length;
+    
+    const completedProjectsCount = mentorProjects.filter(
+      (mp) => mp.project?.status === ProjectStatus.COMPLETED,
+    ).length;
+    
+    // Total = mentoredProjects (completed/cancelled) + active
+    // Note: mentoredProjects already includes completed projects, so no need to add completedProjectsCount
+    const totalProjects = mentoredProjects.length + activeProjectsCount;
 
     return {
       // Basic Info
@@ -1173,11 +1211,18 @@ export class UsersService {
 
       // Mentor-Specific Stats
       stats: {
-        projectsMentored,
+        projectsMentored: mentoredProjects.length,
         totalTasksCreated,
         rating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
         totalReviews,
         activeSince: user.createdAt,
+      },
+
+      // Projects breakdown
+      projects: {
+        total: totalProjects,
+        active: activeProjectsCount,
+        completed: completedProjectsCount,
       },
 
       // Mentored Projects
