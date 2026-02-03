@@ -912,13 +912,36 @@ export class UsersService {
       order: { joinedAt: 'DESC' },
     });
 
-    // Calculate statistics
-    const totalProjects = volunteerProjects.length;
-    const totalContributions = volunteerProjects.reduce(
+    // Filter projects for completed/cancelled contributions
+    const completedOrCancelledProjects = volunteerProjects.filter(
+      (vp) =>
+        vp.project?.status === ProjectStatus.COMPLETED ||
+        vp.project?.status === ProjectStatus.CANCELLED,
+    );
+
+    // Filter projects for active projects (IN_PROGRESS or ON_HOLD)
+    const activeProjectsList = volunteerProjects.filter(
+      (vp) =>
+        vp.project?.status === ProjectStatus.IN_PROGRESS ||
+        vp.project?.status === ProjectStatus.ON_HOLD,
+    );
+
+    // Filter projects for stats calculation (IN_PROGRESS, ON_HOLD, COMPLETED, CANCELLED)
+    const projectsForStats = volunteerProjects.filter(
+      (vp) =>
+        vp.project?.status === ProjectStatus.IN_PROGRESS ||
+        vp.project?.status === ProjectStatus.ON_HOLD ||
+        vp.project?.status === ProjectStatus.COMPLETED ||
+        vp.project?.status === ProjectStatus.CANCELLED,
+    );
+
+    // Calculate statistics - only from relevant project statuses
+    const totalProjects = completedOrCancelledProjects.length + activeProjectsList.length;
+    const totalContributions = projectsForStats.reduce(
       (sum, vp) => sum + (vp.contributionScore || 0),
       0,
     );
-    const totalTasksCompleted = volunteerProjects.reduce(
+    const totalTasksCompleted = projectsForStats.reduce(
       (sum, vp) => sum + (vp.tasksCompleted || 0),
       0,
     );
@@ -937,9 +960,39 @@ export class UsersService {
       rank = 'Rising Star';
     }
 
-    // Get total tasks for each project
+    // Get total tasks for completed/cancelled projects
     const projectContributions = await Promise.all(
-      volunteerProjects.map(async (vp) => {
+      completedOrCancelledProjects.map(async (vp) => {
+        const totalTasks = await this.taskRepository.count({
+          where: { projectId: vp.projectId },
+        });
+
+        // Get project tags (categories + skills)
+        const categoryNames = vp.project.categories?.map(
+          (pc: any) => pc.category.name,
+        ) || [];
+        const skillNames = vp.project.skills?.map(
+          (ps: any) => ps.skill.name,
+        ) || [];
+        const projectTags = [...categoryNames, ...skillNames];
+
+        return {
+          projectId: vp.project.id,
+          projectName: vp.project.name,
+          projectDescription: vp.project.description,
+          projectStatus: vp.project.status,
+          projectTags,
+          contributionScore: vp.contributionScore || 0,
+          joinedAt: vp.joinedAt,
+          tasksCompleted: vp.tasksCompleted || 0,
+          tasksTotal: totalTasks,
+        };
+      }),
+    );
+
+    // Format active projects (IN_PROGRESS or ON_HOLD)
+    const activeProjects = await Promise.all(
+      activeProjectsList.map(async (vp) => {
         const totalTasks = await this.taskRepository.count({
           where: { projectId: vp.projectId },
         });
@@ -1001,8 +1054,11 @@ export class UsersService {
         activeSince: user.createdAt,
       },
 
-      // Project Contributions
+      // Project Contributions (Completed/Cancelled only)
       projectContributions,
+
+      // Active Projects (IN_PROGRESS/ON_HOLD only)
+      activeProjects,
     };
   }
 

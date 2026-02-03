@@ -208,7 +208,7 @@ export class TasksService {
 
   /**
    * Update a task
-   * Only project creator or active mentors can update tasks
+   * Project creator, active mentors, and active volunteers can update tasks
    */
   async update(
     taskId: string,
@@ -226,9 +226,23 @@ export class TasksService {
 
     // Check if user has permission to update task
     const hasPermission = await this.canManageTasks(task.projectId, userId);
+    
+    // If not creator/mentor, check if user is an active volunteer in the project
+    let isActiveVolunteer = false;
     if (!hasPermission) {
+      const volunteer = await this.projectVolunteerRepository.findOne({
+        where: {
+          projectId: task.projectId,
+          userId,
+          status: VolunteerStatus.ACTIVE,
+        },
+      });
+      isActiveVolunteer = !!volunteer;
+    }
+
+    if (!hasPermission && !isActiveVolunteer) {
       throw new ForbiddenException(
-        'Only project creator or active mentors can update tasks',
+        'Only project creator, active mentors, or active volunteers can update tasks',
       );
     }
 

@@ -148,4 +148,9 @@ export class VolunteerProfileResponseDto {
   @Expose()
   @Type(() => ProjectContributionDto)
   projectContributions: ProjectContributionDto[];
+
+  // === Active Projects ===
+  @Expose()
+  @Type(() => ProjectContributionDto)
+  activeProjects: ProjectContributionDto[];
 }
