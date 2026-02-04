@@ -4,9 +4,12 @@ import {
   ForbiddenException,
   BadRequestException,
   ConflictException,
+  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, In } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { Project } from './entities/project.entity';
 import { ProjectCategory } from './entities/project-category.entity';
 import { ProjectSkill } from './entities/project-skill.entity';
@@ -23,6 +26,9 @@ import { PaginationMeta } from '../../common/interfaces/response.interface';
 
 @Injectable()
 export class ProjectsService {
+  private readonly CACHE_TTL = 3600; // 1 hour in seconds
+  private readonly CACHE_PREFIX = 'projects_by_creator';
+
   constructor(
     @InjectRepository(Project)
     private readonly projectRepository: Repository<Project>,
@@ -37,6 +43,8 @@ export class ProjectsService {
     @InjectRepository(Task)
     private readonly taskRepository: Repository<Task>,
     private readonly cloudinaryService: CloudinaryService,
+    @Inject(CACHE_MANAGER)
+    private readonly cacheManager: Cache,
   ) {}
 
   /**
@@ -83,6 +91,9 @@ export class ProjectsService {
       createProjectDto.categoryIds,
       createProjectDto.skills,
     );
+
+    // Invalidate creator's project cache
+    await this.invalidateCreatorCache(creatorId);
 
     // Return formatted project with all relations
     return this.findOne(savedProject.id);
@@ -405,6 +416,9 @@ export class ProjectsService {
       );
     }
 
+    // Invalidate creator's project cache
+    await this.invalidateCreatorCache(project.creatorId);
+
     // Return formatted project with all relations
     return this.findOne(id);
   }
@@ -461,6 +475,9 @@ export class ProjectsService {
 
     // Delete the project (cascade will handle relations)
     await this.projectRepository.remove(project);
+
+    // Invalidate creator's project cache
+    await this.invalidateCreatorCache(project.creatorId);
   }
 
   /**
@@ -1550,9 +1567,18 @@ export class ProjectsService {
   }
 
   /**
-   * Find all projects by creator ID with relations
+   * Find all projects by creator ID with relations and caching
    */
   async findByCreatorId(creatorId: string): Promise<Project[]> {
+    // Check cache first
+    const cacheKey = `${this.CACHE_PREFIX}:${creatorId}`;
+    const cached = await this.cacheManager.get<Project[]>(cacheKey);
+
+    if (cached) {
+      return cached;
+    }
+
+    // If not cached, fetch from database
     const projects = await this.projectRepository.find({
       where: { creatorId },
       relations: [
@@ -1577,7 +1603,18 @@ export class ProjectsService {
       projects.map((project) => this.formatProjectResponse(project, true, project.id)),
     );
 
+    // Cache the results
+    await this.cacheManager.set(cacheKey, formattedProjects, this.CACHE_TTL);
+
     return formattedProjects;
+  }
+
+  /**
+   * Invalidate cache for a specific creator
+   */
+  async invalidateCreatorCache(creatorId: string): Promise<void> {
+    const cacheKey = `${this.CACHE_PREFIX}:${creatorId}`;
+    await this.cacheManager.del(cacheKey);
   }
 
   /**
