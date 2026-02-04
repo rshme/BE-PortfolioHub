@@ -40,7 +40,9 @@ export class ProjectSeeder {
         volunteersNeeded: 5,
         links: {
           github: 'https://github.com/community-learning',
-          demo: 'https://community-learning.demo.com',
+          website: 'https://community-learning.demo.com',
+          figma: 'https://figma.com/file/community-learning-design',
+          discord: 'https://discord.gg/community-learning',
         },
         isVerified: true,
       },
@@ -52,7 +54,9 @@ export class ProjectSeeder {
         level: ProjectLevel.ADVANCED,
         volunteersNeeded: 3,
         links: {
-          github: 'https://github.com/green-energy-monitor',
+          gitlab: 'https://gitlab.com/green-energy-monitor',
+          website: 'https://greenenergy.monitor.io',
+          slack: 'https://greenenergy.slack.com',
         },
         isVerified: true,
       },
@@ -66,6 +70,8 @@ export class ProjectSeeder {
         links: {
           github: 'https://github.com/healthcare-access',
           website: 'https://healthaccess.app',
+          figma: 'https://figma.com/file/healthcare-access-ui',
+          discord: 'https://discord.gg/healthaccess',
         },
         isVerified: true,
       },
@@ -77,7 +83,9 @@ export class ProjectSeeder {
         level: ProjectLevel.BEGINNER,
         volunteersNeeded: 6,
         links: {
-          github: 'https://github.com/food-waste-tracker',
+          bitbucket: 'https://bitbucket.org/food-waste-tracker',
+          website: 'https://foodwaste.tracker.app',
+          slack: 'https://foodwaste.slack.com',
         },
         isVerified: false,
       },
@@ -90,6 +98,8 @@ export class ProjectSeeder {
         volunteersNeeded: 4,
         links: {
           github: 'https://github.com/os-docs-hub',
+          figma: 'https://figma.com/file/docs-hub-design',
+          discord: 'https://discord.gg/os-docs-hub',
         },
         isVerified: false,
       },
@@ -101,8 +111,10 @@ export class ProjectSeeder {
         level: ProjectLevel.ADVANCED,
         volunteersNeeded: 2,
         links: {
-          github: 'https://github.com/climate-data-viz',
-          demo: 'https://climate-data.demo.com',
+          gitlab: 'https://gitlab.com/climate-data-viz',
+          website: 'https://climate-data.demo.com',
+          figma: 'https://figma.com/file/climate-viz-ui',
+          slack: 'https://climatedata.slack.com',
         },
         isVerified: true,
       },
@@ -115,6 +127,8 @@ export class ProjectSeeder {
         volunteersNeeded: 5,
         links: {
           github: 'https://github.com/volunteer-mgmt',
+          website: 'https://volunteer-mgmt.org',
+          discord: 'https://discord.gg/volunteer-mgmt',
         },
         isVerified: true,
       },
@@ -126,7 +140,10 @@ export class ProjectSeeder {
         level: ProjectLevel.ADVANCED,
         volunteersNeeded: 3,
         links: {
-          github: 'https://github.com/mental-health-chat',
+          bitbucket: 'https://bitbucket.org/mental-health-chat',
+          website: 'https://mentalhealthsupport.chat',
+          figma: 'https://figma.com/file/mental-health-chat-ui',
+          slack: 'https://mentalhealth.slack.com',
         },
         isVerified: false,
       },
@@ -140,6 +157,7 @@ export class ProjectSeeder {
         links: {
           github: 'https://github.com/local-biz-directory',
           website: 'https://localbiz.directory',
+          discord: 'https://discord.gg/local-biz',
         },
         isVerified: true,
       },
@@ -151,7 +169,9 @@ export class ProjectSeeder {
         level: ProjectLevel.ADVANCED,
         volunteersNeeded: 2,
         links: {
-          github: 'https://github.com/code-review-buddy',
+          gitlab: 'https://gitlab.com/code-review-buddy',
+          figma: 'https://figma.com/file/code-review-buddy',
+          slack: 'https://codereview.slack.com',
         },
         isVerified: false,
       },
