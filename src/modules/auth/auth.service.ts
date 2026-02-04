@@ -25,10 +25,7 @@ export class AuthService {
 
   async register(registerDto: RegisterDto): Promise<AuthResponse> {
     // UsersService will handle email & username conflict validation
-    const user = await this.usersService.create({
-      ...registerDto,
-      role: UserRole.VOLUNTEER, // Default role
-    });
+    const user = await this.usersService.create(registerDto);
 
     return this.generateAuthResponse(user);
   }

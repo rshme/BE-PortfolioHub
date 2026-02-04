@@ -1,4 +1,5 @@
-import { IsEmail, IsString, MinLength, Matches } from 'class-validator';
+import { IsEmail, IsString, MinLength, Matches, IsEnum } from 'class-validator';
+import { UserRole } from '../../../common/enums/user-role.enum';
 
 export class RegisterDto {
   @IsEmail({}, { message: 'Email harus valid' })
@@ -18,4 +19,7 @@ export class RegisterDto {
   @IsString({ message: 'Nama lengkap harus berupa string' })
   @MinLength(3, { message: 'Nama lengkap minimal 3 karakter' })
   fullName: string;
+
+  @IsEnum(UserRole, { message: 'Role harus salah satu dari: admin, mentor, volunteer, project_owner' })
+  role: UserRole;
 }

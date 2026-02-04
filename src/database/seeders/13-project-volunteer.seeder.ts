@@ -60,7 +60,7 @@ export class ProjectVolunteerSeeder {
         const statusRand = Math.random();
         let status: VolunteerStatus;
         
-        if (statusRand > 0.6) {
+        if (statusRand > 0.3) {
           status = VolunteerStatus.PENDING;
         } else if (statusRand > 0.8) {
           status = VolunteerStatus.REJECTED;
