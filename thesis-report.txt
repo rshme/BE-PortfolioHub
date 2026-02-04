@@ -1,0 +1,63 @@
+
+==============================================
+LAPORAN METRIK PLATFORM PORTFOLIOHUB
+Periode: 1/5/2026 - 2/4/2026
+==============================================
+
+HIPOTESIS 1: Project Matching dengan Jaccard Similarity
+--------------------------------------------------------
+Total Pencarian: 6
+Rata-rata Waktu Pencarian: 0.01 menit
+Pencarian < 5 menit: 6 (100.0%)
+TARGET: 100% pencarian < 5 menit
+STATUS: ✓ TERCAPAI
+
+Rata-rata Top Match Score: 20.0%
+Matches > 70%: 0 (0.0%)
+TARGET: Relevansi >= 70%
+STATUS: ✗ BELUM TERCAPAI
+
+Rata-rata Proyek Matched: 6.0
+
+HIPOTESIS 2: Mentorship & Collaboration
+-----------------------------------------
+Total Interaksi Forum: 0
+Total Aktivitas Milestone: 0
+Total Sesi Mentorship: 0
+User Aktif Unik: 0
+Rata-rata Hari Penyelesaian Milestone: 0.0
+
+User Retention Analysis:
+Total Users Tracked: 0
+Retained After 4 Weeks: 0 (0.0%)
+TARGET: Retensi > 50% setelah 4 minggu
+STATUS: ✗ BELUM TERCAPAI
+
+Weekly Active Users: 0
+Rata-rata Days Since Last Active: 0.0 hari
+
+HIPOTESIS 3: Skill Progression & Portfolio Building
+-----------------------------------------------------
+Total Assessments: 0
+Rata-rata Improvement: 0.0%
+Assessments > 25% Improvement: 0 (0.0%)
+TARGET: Minimal 25% improvement
+STATUS: ✗ BELUM TERCAPAI
+
+Rata-rata Hours Spent: 0.0 jam
+
+Portfolio Metrics:
+Total Users dengan Portfolio: 0
+Rata-rata Projects per User: 0.0
+Rata-rata Completed Projects: 0.0
+Rata-rata Contributions: 0.0
+Rata-rata Badges Earned: 0.0
+
+==============================================
+KESIMPULAN
+==============================================
+Hipotesis 1 (Project Matching): ✗ PERLU PERBAIKAN
+Hipotesis 2 (Retention): ✗ PERLU PERBAIKAN
+Hipotesis 3 (Skill Progression): ✗ PERLU PERBAIKAN
+
+==============================================

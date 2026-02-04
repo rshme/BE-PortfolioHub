@@ -2,10 +2,19 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
+import { LoggingService } from './modules/logging/logging.service';
+import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+  const loggingService = app.get(LoggingService);
+
+  // Set custom logger
+  app.useLogger(loggingService);
+
+  // Enable global metrics interceptor
+  app.useGlobalInterceptors(new MetricsInterceptor(loggingService));
 
   // Enable CORS
   app.enableCors({

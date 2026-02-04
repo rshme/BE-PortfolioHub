@@ -24,6 +24,7 @@ import { MentorStatus } from '../../common/enums/mentor-status.enum';
 import { VolunteerStatus } from '../../common/enums/volunteer-status.enum';
 import { PaginationMeta } from '../../common/interfaces/response.interface';
 import { TaskStatistics } from './interfaces';
+import { LoggingService } from '../logging/logging.service';
 
 @Injectable()
 export class TasksService {
@@ -40,6 +41,7 @@ export class TasksService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(TaskComment)
     private readonly taskCommentRepository: Repository<TaskComment>,
+    private readonly loggingService: LoggingService,
   ) {}
 
   /**

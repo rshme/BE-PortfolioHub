@@ -26,6 +26,7 @@ import { Testimonial } from '../testimonials/entities/testimonial.entity';
 import { Skill } from '../skills/entities/skill.entity';
 import { Category } from '../categories/entities/category.entity';
 import { Organization } from '../organizations/entities/organization.entity';
+import { LoggingService } from '../logging/logging.service';
 
 @Injectable()
 export class UsersService {
@@ -54,6 +55,7 @@ export class UsersService {
     private readonly organizationRepository: Repository<Organization>,
     @InjectRepository(Testimonial)
     private readonly testimonialRepository: Repository<Testimonial>,
+    private readonly loggingService: LoggingService,
   ) {}
 
   /**
@@ -424,38 +426,103 @@ export class UsersService {
       memberSince: user.createdAt,
     };
 
+    // Calculate account age and activity metrics
+    const accountAgeMs = Date.now() - new Date(user.createdAt).getTime();
+    const accountAgeDays = Math.floor(accountAgeMs / (1000 * 60 * 60 * 24));
+    const lastActiveDate = user.updatedAt || user.createdAt;
+    const daysSinceLastActive = Math.floor(
+      (Date.now() - new Date(lastActiveDate).getTime()) / (1000 * 60 * 60 * 24),
+    );
+
     // Get statistics based on role
+    let roleStats: any;
     switch (user.role) {
       case UserRole.VOLUNTEER:
-        return {
+        roleStats = {
           ...baseStats,
           volunteer: await this.getVolunteerStatistics(userId),
         };
+        break;
 
       case UserRole.MENTOR:
-        return {
+        roleStats = {
           ...baseStats,
           mentor: await this.getMentorStatistics(userId),
         };
+        break;
 
       case UserRole.PROJECT_OWNER:
-        return {
+        roleStats = {
           ...baseStats,
           creator: await this.getCreatorStatistics(userId),
         };
+        break;
 
       case UserRole.ADMIN:
-        return {
+        roleStats = {
           ...baseStats,
           admin: await this.getAdminStatistics(),
           volunteer: await this.getVolunteerStatistics(userId),
           mentor: await this.getMentorStatistics(userId),
           creator: await this.getCreatorStatistics(userId),
         };
+        break;
 
       default:
-        return baseStats;
+        roleStats = baseStats;
     }
+
+    // Calculate aggregate metrics for retention tracking
+    const volunteerStats = roleStats.volunteer || { projects: {}, tasks: {}, contribution: {} };
+    const mentorStats = roleStats.mentor || { projects: {}, sessions: 0 };
+    
+    const totalContributions =
+      (volunteerStats.contribution?.totalTasksCompleted || 0) +
+      (volunteerStats.projects?.completed || 0);
+    
+    const projectsJoined = volunteerStats.projects?.total || 0;
+    const projectsCompleted = volunteerStats.projects?.completed || 0;
+    const tasksCompleted = volunteerStats.tasks?.completed || 0;
+    const mentorshipSessions = mentorStats.sessions || 0;
+    
+    // Determine if user is weekly active (active within last 7 days)
+    const weeklyActiveStatus = daysSinceLastActive <= 7;
+
+    // Log portfolio metrics
+    const badges = await this.userBadgeRepository.count({ where: { userId } });
+    const skills = await this.userSkillRepository.count({ where: { userId } });
+    const testimonials = await this.testimonialRepository.count({
+      where: { userId },
+    });
+
+    this.loggingService.logPortfolioMetrics({
+      userId: user.id,
+      totalProjects: projectsJoined,
+      completedProjects: projectsCompleted,
+      verifiedProjects: 0, // Can be enhanced
+      totalContributions,
+      skillsAcquired: [], // Can be enhanced with skill names
+      badgesEarned: badges,
+      testimonialsReceived: testimonials,
+    });
+
+    // Log user retention metrics
+    this.loggingService.logUserRetention({
+      userId: user.id,
+      userRole: user.role,
+      accountAge: accountAgeDays,
+      lastActiveDate: new Date(lastActiveDate),
+      daysSinceLastActive,
+      totalContributions,
+      weeklyActiveStatus,
+      projectsJoined,
+      projectsCompleted,
+      tasksCompleted,
+      forumInteractions: 0, // Will be tracked separately
+      mentorshipSessions,
+    });
+
+    return roleStats;
   }
 
   /**
@@ -1286,6 +1353,67 @@ export class UsersService {
 
       // Reviews
       reviews,
+    };
+  }
+
+  /**
+   * Submit survey response for thesis research
+   * Used for pre-test, post-test, satisfaction surveys
+   */
+  async submitSurvey(userId: string, surveyDto: any): Promise<{ message: string }> {
+    const user = await this.findByIdOrFail(userId);
+    
+    // Calculate account age for platform usage days
+    const accountAgeMs = Date.now() - new Date(user.createdAt).getTime();
+    const platformUsageDays = Math.floor(accountAgeMs / (1000 * 60 * 60 * 24));
+
+    // Extract skill assessments
+    const skillsAssessed = surveyDto.skillAssessments?.map((sa: any) => sa.skillName) || [];
+
+    // Log survey response
+    this.loggingService.logSurveyResponse({
+      userId,
+      surveyType: surveyDto.surveyType,
+      responses: surveyDto.responses || {},
+      skillsAssessed,
+      overallSatisfactionScore: surveyDto.overallSatisfaction,
+      platformUsageDays,
+      metadata: surveyDto.metadata,
+    });
+
+    // Log skill progression if skill assessments provided
+    if (surveyDto.skillAssessments && surveyDto.skillAssessments.length > 0) {
+      for (const assessment of surveyDto.skillAssessments) {
+        let improvementPercentage: number | undefined;
+        
+        if (assessment.preTestScore && assessment.postTestScore) {
+          improvementPercentage =
+            ((assessment.postTestScore - assessment.preTestScore) /
+              assessment.preTestScore) *
+            100;
+        }
+
+        // Get user statistics for hours spent
+        const userStats = await this.getUserStatistics(userId);
+        const projectsCompleted = userStats.volunteer?.projects?.completed || 0;
+
+        this.loggingService.logSkillProgression({
+          userId,
+          skillId: assessment.skillId,
+          skillName: assessment.skillName,
+          preTestScore: assessment.preTestScore,
+          postTestScore: assessment.postTestScore,
+          selfReportedLevel: assessment.selfReportedLevel || 'beginner',
+          projectsCompleted,
+          hoursSpent: 0, // Can be enhanced with actual time tracking
+          improvementPercentage,
+          testDate: new Date(),
+        });
+      }
+    }
+
+    return {
+      message: 'Survey submitted successfully',
     };
   }
 }

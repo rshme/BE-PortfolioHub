@@ -9,6 +9,7 @@ import { ProjectSkill } from './entities/project-skill.entity';
 import { ProjectMentor } from './entities/project-mentor.entity';
 import { ProjectVolunteer } from './entities/project-volunteer.entity';
 import { UserSkill } from '../users/entities/user-skill.entity';
+import { UserInterest } from '../users/entities/user-interest.entity';
 import { Task } from '../tasks/entities/task.entity';
 import { CloudinaryService } from '../../config/cloudinary.service';
 import { AuthModule } from '../auth/auth.module';
@@ -22,6 +23,7 @@ import { AuthModule } from '../auth/auth.module';
       ProjectMentor,
       ProjectVolunteer,
       UserSkill,
+      UserInterest,
       Task,
     ]),
     AuthModule,

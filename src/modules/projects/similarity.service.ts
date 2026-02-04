@@ -8,6 +8,7 @@ import { ProjectSkill } from './entities/project-skill.entity';
 import { ProjectVolunteer } from './entities/project-volunteer.entity';
 import { ProjectMentor } from './entities/project-mentor.entity';
 import { UserSkill } from '../users/entities/user-skill.entity';
+import { UserInterest } from '../users/entities/user-interest.entity';
 import { JaccardSimilarity } from '../../common/utils/jaccard-similarity.util';
 import {
   SimilarityScore,
@@ -16,6 +17,7 @@ import {
 import { ProjectStatus } from '../../common/enums/project-status.enum';
 import { VolunteerStatus } from '../../common/enums/volunteer-status.enum';
 import { MentorStatus } from '../../common/enums/mentor-status.enum';
+import { LoggingService } from '../logging/logging.service';
 
 @Injectable()
 export class SimilarityService {
@@ -29,12 +31,15 @@ export class SimilarityService {
     private readonly projectSkillRepository: Repository<ProjectSkill>,
     @InjectRepository(UserSkill)
     private readonly userSkillRepository: Repository<UserSkill>,
+    @InjectRepository(UserInterest)
+    private readonly userInterestRepository: Repository<UserInterest>,
     @InjectRepository(ProjectVolunteer)
     private readonly projectVolunteerRepository: Repository<ProjectVolunteer>,
     @InjectRepository(ProjectMentor)
     private readonly projectMentorRepository: Repository<ProjectMentor>,
     @Inject(CACHE_MANAGER)
     private readonly cacheManager: Cache,
+    private readonly loggingService: LoggingService,
   ) {}
 
   /**
@@ -44,6 +49,8 @@ export class SimilarityService {
     userId: string,
     projectId: string,
   ): Promise<SimilarityScore> {
+    const startTime = Date.now();
+
     // Get user skills
     const userSkills = await this.userSkillRepository.find({
       where: { userId },
@@ -64,9 +71,11 @@ export class SimilarityService {
       throw new NotFoundException('Project has no skills registered');
     }
 
-    // Extract skill IDs
+    // Extract skill IDs and names
     const userSkillIds = userSkills.map((us) => us.skillId);
+    const userSkillNames = userSkills.map((us) => us.skill?.name || us.skillId);
     const projectSkillIds = projectSkills.map((ps) => ps.skillId);
+    const projectSkillNames = projectSkills.map((ps) => ps.skill?.name || ps.skillId);
 
     // Calculate Jaccard similarity
     const similarityScore = JaccardSimilarity.calculate(
@@ -85,6 +94,21 @@ export class SimilarityService {
       .map((ps) => ps.skill?.name || ps.skillId);
 
     const project = projectSkills[0].project;
+    const calculationTime = Date.now() - startTime;
+
+    // Log Jaccard similarity calculation
+    this.loggingService.logJaccardCalculation({
+      projectId,
+      projectName: project?.name || 'Unknown',
+      projectSkills: projectSkillNames,
+      projectCategories: [], // Will be added if needed
+      userSkills: userSkillNames,
+      userInterests: [],
+      skillsSimilarity: similarityScore,
+      categoriesSimilarity: 0,
+      overallScore: similarityScore,
+      calculationTimeMs: calculationTime,
+    });
 
     return {
       projectId,
@@ -185,14 +209,47 @@ export class SimilarityService {
     limit: number = 10,
     minSimilarity: number = 0,
   ): Promise<ProjectRecommendation[]> {
+    const searchStartTime = Date.now();
+
     // Check cache first
     const cacheKey = `${this.CACHE_PREFIX}:${userId}:${limit}:${minSimilarity}`;
     const cached =
       await this.cacheManager.get<ProjectRecommendation[]>(cacheKey);
 
     if (cached) {
+      const searchEndTime = Date.now();
+      
+      // Log cached result metrics
+      this.loggingService.log(
+        `Project recommendations retrieved from cache for user ${userId}`,
+        'SimilarityService',
+        {
+          userId,
+          cached: true,
+          resultCount: cached.length,
+          durationMs: searchEndTime - searchStartTime,
+        },
+      );
+
       return cached;
     }
+
+    // Get user skills and interests for logging
+    const [userSkills, userInterests] = await Promise.all([
+      this.userSkillRepository.find({
+        where: { userId },
+        relations: ['skill'],
+      }),
+      this.userInterestRepository.find({
+        where: { userId },
+        relations: ['category'],
+      }),
+    ]);
+
+    const userSkillNames = userSkills.map((us) => us.skill?.name || us.skillId);
+    const userInterestNames = userInterests.map(
+      (ui) => ui.category?.name || ui.categoryId,
+    );
 
     // Get projects user is already part of (to exclude)
     const [volunteerProjects, mentorProjects, createdProjects] =
@@ -233,6 +290,19 @@ export class SimilarityService {
 
     // Fetch full project details
     if (topSimilarities.length === 0) {
+      const searchEndTime = Date.now();
+      
+      // Log empty result
+      this.loggingService.logProjectMatchingMetrics({
+        userId,
+        userSkills: userSkillNames,
+        userInterests: userInterestNames,
+        searchStartTime,
+        searchEndTime,
+        totalProjects: similarities.length,
+        matchedProjects: [],
+      });
+
       return [];
     }
 
@@ -265,6 +335,39 @@ export class SimilarityService {
 
     // Cache the results
     await this.cacheManager.set(cacheKey, recommendations, this.CACHE_TTL);
+
+    const searchEndTime = Date.now();
+
+    // Prepare matched projects data for logging
+    const matchedProjectsData = topSimilarities.map((sim) => ({
+      projectId: sim.projectId,
+      projectName: sim.projectName,
+      jaccardScore: sim.similarityScore,
+      matchedSkills: sim.matchingSkills,
+      matchedCategories: [], // Can be enhanced later
+    }));
+
+    // Calculate average and top match scores
+    const topMatchScore =
+      matchedProjectsData.length > 0 ? matchedProjectsData[0].jaccardScore : 0;
+    const avgMatchScore =
+      matchedProjectsData.length > 0
+        ? matchedProjectsData.reduce((sum, p) => sum + p.jaccardScore, 0) /
+          matchedProjectsData.length
+        : 0;
+
+    // Log project matching metrics untuk hipotesis
+    this.loggingService.logProjectMatchingMetrics({
+      userId,
+      userSkills: userSkillNames,
+      userInterests: userInterestNames,
+      searchStartTime,
+      searchEndTime,
+      totalProjects: similarities.length,
+      matchedProjects: matchedProjectsData,
+      topMatchScore,
+      avgMatchScore,
+    });
 
     return recommendations;
   }

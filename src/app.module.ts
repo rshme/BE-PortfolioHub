@@ -16,6 +16,7 @@ import { OrganizationsModule } from './modules/organizations/organizations.modul
 import { TestimonialsModule } from './modules/testimonials/testimonials.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { SkillsModule } from './modules/skills/skills.module';
+import { LoggingModule } from './modules/logging/logging.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { SkillsModule } from './modules/skills/skills.module';
       inject: [ConfigService],
       useFactory: getRedisConfig,
     }),
+    LoggingModule,
     AuthModule,
     UsersModule,
     ProjectsModule,

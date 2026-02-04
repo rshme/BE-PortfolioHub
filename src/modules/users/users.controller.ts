@@ -366,4 +366,24 @@ export class UsersController {
       data: null,
     };
   }
+
+  /**
+   * Submit survey for thesis research (Pre-test, Post-test, Satisfaction)
+   * POST /users/survey
+   */
+  @Post('survey')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async submitSurvey(
+    @Req() req: any,
+    @Body() surveyDto: any,
+  ): Promise<ApiResponse<{ message: string }>> {
+    const userId = req.user.id || req.user.userId;
+    const result = await this.usersService.submitSurvey(userId, surveyDto);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Survey submitted successfully',
+      data: result,
+    };
+  }
 }
