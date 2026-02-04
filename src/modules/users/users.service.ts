@@ -491,21 +491,40 @@ export class UsersService {
     // Log portfolio metrics
     const badges = await this.userBadgeRepository.count({ where: { userId } });
     const skills = await this.userSkillRepository.count({ where: { userId } });
-    const testimonials = await this.testimonialRepository.count({
-      where: { userId },
-    });
+
+    // Calculate profile completeness
+    const profileCompleteness = this.calculateProfileCompleteness(user, skills);
 
     this.loggingService.logPortfolioMetrics({
       userId: user.id,
       portfolioItemsCount: projectsJoined + totalContributions,
       verifiedContributions: totalContributions,
-      testimonialsReceived: testimonials,
-      testimonialsGiven: 0, // Can be enhanced by tracking given testimonials
+      testimonialsReceived: 0, // Testimonials UI not implemented
+      testimonialsGiven: 0,
       badgesEarned: badges,
-      profileCompleteness: 80, // Can be calculated based on filled fields
+      profileCompleteness,
     });
 
     return roleStats;
+  }
+
+  /**
+   * Calculate profile completeness percentage
+   */
+  private calculateProfileCompleteness(user: any, skillsCount: number): number {
+    let completeness = 0;
+    const totalFields = 8; // Total fields to check
+
+    if (user.fullName) completeness += 12.5;
+    if (user.email) completeness += 12.5;
+    if (user.bio) completeness += 12.5;
+    if (user.location) completeness += 12.5;
+    if (user.avatarUrl) completeness += 12.5;
+    if (skillsCount > 0) completeness += 12.5;
+    if (user.githubUrl || user.linkedinUrl || user.portfolioUrl) completeness += 12.5;
+    if (user.phoneNumber) completeness += 12.5;
+
+    return Math.round(completeness);
   }
 
   /**

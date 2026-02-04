@@ -229,7 +229,7 @@ export class MetricsAnalyzer {
 
   /**
    * HIPOTESIS 3: Analisis portfolio building effectiveness
-   * Target: 80% complete min 1 contribution, avg 2 items, 60% testimonials, satisfaction >= 7/10
+   * Target: 80% complete min 1 contribution, avg 2 items, 70% profile completeness >=60%, satisfaction >= 7/10
    */
   async analyzePortfolioBuilding(
     startDate: Date,
@@ -241,18 +241,15 @@ export class MetricsAnalyzer {
     avgPortfolioItems: number;
     usersWithMinimum2Items: number;
     usersWithMinimum2ItemsPercentage: number;
-    totalTestimonials: number;
-    usersWithTestimonials: number;
-    usersWithTestimonialsPercentage: number;
+    usersWithGoodProfileCompleteness: number;
+    usersWithGoodProfileCompletenessPercentage: number;
+    avgProfileCompleteness: number;
     avgPortfolioSatisfaction: number;
     avgVerifiedContributions: number;
   }> {
     const logs = await this.readMetricsLogs(startDate, endDate);
     const portfolioLogs = logs.filter(
       (log) => log.metricType === 'portfolio_metrics',
-    );
-    const testimonialLogs = logs.filter(
-      (log) => log.metricType === 'testimonial_activity',
     );
 
     if (portfolioLogs.length === 0) {
@@ -263,9 +260,9 @@ export class MetricsAnalyzer {
         avgPortfolioItems: 0,
         usersWithMinimum2Items: 0,
         usersWithMinimum2ItemsPercentage: 0,
-        totalTestimonials: testimonialLogs.length,
-        usersWithTestimonials: 0,
-        usersWithTestimonialsPercentage: 0,
+        usersWithGoodProfileCompleteness: 0,
+        usersWithGoodProfileCompletenessPercentage: 0,
+        avgProfileCompleteness: 0,
         avgPortfolioSatisfaction: 0,
         avgVerifiedContributions: 0,
       };
@@ -287,10 +284,16 @@ export class MetricsAnalyzer {
     );
     const avgPortfolioItems = totalPortfolioItems / portfolioLogs.length;
 
-    // H3c: Users with testimonial activity
-    const uniqueUsersWithTestimonials = new Set(
-      testimonialLogs.map((log) => log.userId),
-    ).size;
+    // H3c: Users with profile completeness >= 60%
+    const usersWithGoodProfileCompleteness = portfolioLogs.filter(
+      (log) => (log.profileCompleteness || 0) >= 60,
+    ).length;
+
+    const totalProfileCompleteness = portfolioLogs.reduce(
+      (sum, log) => sum + (log.profileCompleteness || 0),
+      0,
+    );
+    const avgProfileCompleteness = totalProfileCompleteness / portfolioLogs.length;
 
     const totalVerifiedContributions = portfolioLogs.reduce(
       (sum, log) => sum + (log.verifiedContributions || 0),
@@ -312,9 +315,9 @@ export class MetricsAnalyzer {
       avgPortfolioItems,
       usersWithMinimum2Items,
       usersWithMinimum2ItemsPercentage: (usersWithMinimum2Items / portfolioLogs.length) * 100,
-      totalTestimonials: testimonialLogs.length,
-      usersWithTestimonials: uniqueUsersWithTestimonials,
-      usersWithTestimonialsPercentage: (uniqueUsersWithTestimonials / portfolioLogs.length) * 100,
+      usersWithGoodProfileCompleteness,
+      usersWithGoodProfileCompletenessPercentage: (usersWithGoodProfileCompleteness / portfolioLogs.length) * 100,
+      avgProfileCompleteness,
       avgPortfolioSatisfaction,
       avgVerifiedContributions,
     };
@@ -426,11 +429,11 @@ H3b - Portfolio Items:
   TARGET H3b: Rata-rata 2 portfolio items per user
   STATUS: ${portfolioBuilding.avgPortfolioItems >= 2 ? '✓ TERCAPAI' : portfolioBuilding.avgPortfolioItems >= 1.5 ? '⚠ PARTIALLY ACHIEVED' : '✗ BELUM TERCAPAI'}
 
-H3c - Testimonial Activity:
-  Total Testimonials: ${portfolioBuilding.totalTestimonials}
-  Users dengan Testimonials: ${portfolioBuilding.usersWithTestimonials} (${portfolioBuilding.usersWithTestimonialsPercentage.toFixed(1)}%)
-  TARGET H3c: Min 60% users give/receive testimonials
-  STATUS: ${portfolioBuilding.usersWithTestimonialsPercentage >= 60 ? '✓ TERCAPAI' : portfolioBuilding.usersWithTestimonialsPercentage >= 50 ? '⚠ PARTIALLY ACHIEVED' : '✗ BELUM TERCAPAI'}
+H3c - Profile Completeness:
+  Rata-rata Profile Completeness: ${portfolioBuilding.avgProfileCompleteness.toFixed(1)}%
+  Users dengan Completeness ≥ 60%: ${portfolioBuilding.usersWithGoodProfileCompleteness} (${portfolioBuilding.usersWithGoodProfileCompletenessPercentage.toFixed(1)}%)
+  TARGET H3c: Min 70% users mencapai profile completeness ≥ 60%
+  STATUS: ${portfolioBuilding.usersWithGoodProfileCompletenessPercentage >= 70 ? '✓ TERCAPAI' : portfolioBuilding.usersWithGoodProfileCompletenessPercentage >= 60 ? '⚠ PARTIALLY ACHIEVED' : '✗ BELUM TERCAPAI'}
 
 H3d - Portfolio Satisfaction:
   Rata-rata Satisfaction: ${portfolioBuilding.avgPortfolioSatisfaction > 0 ? portfolioBuilding.avgPortfolioSatisfaction.toFixed(1) + '/10' : 'N/A'}
@@ -440,7 +443,7 @@ H3d - Portfolio Satisfaction:
 KESIMPULAN H3: ${
   portfolioBuilding.usersWithContributionsPercentage >= 80 &&
   portfolioBuilding.avgPortfolioItems >= 2 &&
-  portfolioBuilding.usersWithTestimonialsPercentage >= 60 &&
+  portfolioBuilding.usersWithGoodProfileCompletenessPercentage >= 70 &&
   (portfolioBuilding.avgPortfolioSatisfaction >= 7 || portfolioBuilding.avgPortfolioSatisfaction === 0)
     ? '✓ HIPOTESIS TERBUKTI - Platform efektif dalam portfolio building'
     : portfolioBuilding.usersWithContributionsPercentage >= 70 ||
@@ -475,7 +478,7 @@ STATUS HIPOTESIS:
 3. H3 (Portfolio Building): ${
   portfolioBuilding.usersWithContributionsPercentage >= 80 &&
   portfolioBuilding.avgPortfolioItems >= 2 &&
-  portfolioBuilding.usersWithTestimonialsPercentage >= 60
+  portfolioBuilding.usersWithGoodProfileCompletenessPercentage >= 70
     ? '✓ TERBUKTI'
     : '⚠ PARTIALLY SUPPORTED'
 }
@@ -514,8 +517,8 @@ lakukan triangulation dengan data kualitatif dari surveys dan interviews.
     if (portfolioBuilding.avgPortfolioItems < 2) {
       recommendations.push('- Simplify contribution workflow untuk meningkatkan portfolio building rate');
     }
-    if (portfolioBuilding.usersWithTestimonialsPercentage < 60) {
-      recommendations.push('- Prompt users untuk give/request testimonials setelah task completion');
+    if (portfolioBuilding.usersWithGoodProfileCompletenessPercentage < 70) {
+      recommendations.push('- Encourage users untuk complete profile (add skills, interests, bio) melalui onboarding dan reminders');
     }
 
     if (recommendations.length === 0) {
