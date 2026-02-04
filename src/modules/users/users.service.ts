@@ -947,10 +947,11 @@ export class UsersService {
     }));
 
     // Get volunteer projects with full details
+    // Only include ACTIVE volunteers to match what's shown in project details
     const volunteerProjects = await this.projectVolunteerRepository.find({
       where: { 
         userId: user.id,
-        status: In([VolunteerStatus.ACTIVE, VolunteerStatus.PENDING]) 
+        status: VolunteerStatus.ACTIVE 
       },
       relations: [
         'project', 

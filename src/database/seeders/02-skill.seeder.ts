@@ -2,6 +2,16 @@ import { DataSource } from 'typeorm';
 import { Skill } from '../../modules/skills/entities/skill.entity';
 
 export class SkillSeeder {
+  // Skill categories for better overlap management
+  static readonly SKILL_CATEGORIES = {
+    FRONTEND: 'frontend',
+    BACKEND: 'backend',
+    DATABASE: 'database',
+    DEVOPS: 'devops',
+    MOBILE: 'mobile',
+    TOOLS: 'tools',
+  };
+
   async run(dataSource: DataSource): Promise<void> {
     const skillRepository = dataSource.getRepository(Skill);
 
