@@ -22,6 +22,7 @@ import {
 import { TaskStatus } from '../../common/enums/task-status.enum';
 import { MentorStatus } from '../../common/enums/mentor-status.enum';
 import { VolunteerStatus } from '../../common/enums/volunteer-status.enum';
+import { ProjectLevel } from '../../common/enums/project-level.enum';
 import { PaginationMeta } from '../../common/interfaces/response.interface';
 import { TaskStatistics } from './interfaces';
 import { LoggingService } from '../logging/logging.service';
@@ -248,9 +249,62 @@ export class TasksService {
       );
     }
 
+    // Store old status before update
+    const oldStatus = task.status;
+    const oldAssignedToId = task.assignedToId;
+
     // Update task
     Object.assign(task, updateTaskDto);
     const updatedTask = await this.taskRepository.save(task);
+
+    // Handle contribution score and task completion count if status changed
+    if (updateTaskDto.status && oldStatus !== updateTaskDto.status) {
+      const assignedUserId = updatedTask.assignedToId || oldAssignedToId;
+      
+      // Status changed to COMPLETED
+      if (updateTaskDto.status === TaskStatus.COMPLETED && oldStatus !== TaskStatus.COMPLETED) {
+        updatedTask.completedAt = new Date();
+        
+        if (assignedUserId) {
+          // Add contribution score based on project level
+          await this.handleContributionScoreUpdate(
+            task.projectId,
+            assignedUserId,
+            oldStatus,
+            updateTaskDto.status,
+          );
+          
+          // Increment task completion count
+          await this.incrementVolunteerTaskCount(
+            task.projectId,
+            assignedUserId,
+          );
+        }
+      }
+      
+      // Status changed FROM COMPLETED to another status
+      else if (oldStatus === TaskStatus.COMPLETED && updateTaskDto.status !== TaskStatus.COMPLETED) {
+        updatedTask.completedAt = undefined;
+        
+        if (assignedUserId) {
+          // Subtract contribution score based on project level
+          await this.handleContributionScoreUpdate(
+            task.projectId,
+            assignedUserId,
+            oldStatus,
+            updateTaskDto.status,
+          );
+          
+          // Decrement task completion count
+          await this.decrementVolunteerTaskCount(
+            task.projectId,
+            assignedUserId,
+          );
+        }
+      }
+
+      await this.taskRepository.save(updatedTask);
+    }
 
     return this.findOne(updatedTask.id, userId);
   }
@@ -553,19 +607,112 @@ export class TasksService {
   }
 
   /**
-   * Increment volunteer's completed task count
+   * Increment volunteer's completed task count using atomic operation
    */
   private async incrementVolunteerTaskCount(
     projectId: string,
     userId: string,
   ): Promise<void> {
+    await this.projectVolunteerRepository
+      .createQueryBuilder()
+      .update(ProjectVolunteer)
+      .set({
+        tasksCompleted: () => '"tasks_completed" + 1',
+      })
+      .where('project_id = :projectId', { projectId })
+      .andWhere('user_id = :userId', { userId })
+      .execute();
+  }
+
+  /**
+   * Decrement volunteer's completed task count using atomic operation
+   */
+  private async decrementVolunteerTaskCount(
+    projectId: string,
+    userId: string,
+  ): Promise<void> {
+    await this.projectVolunteerRepository
+      .createQueryBuilder()
+      .update(ProjectVolunteer)
+      .set({
+        tasksCompleted: () => 'GREATEST("tasks_completed" - 1, 0)',
+      })
+      .where('project_id = :projectId', { projectId })
+      .andWhere('user_id = :userId', { userId })
+      .execute();
+  }
+
+  /**
+   * Handle contribution score update based on status change
+   */
+  private async handleContributionScoreUpdate(
+    projectId: string,
+    userId: string,
+    oldStatus: TaskStatus,
+    newStatus: TaskStatus,
+  ): Promise<void> {
+    // Get the project to determine the difficulty level
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+      select: ['id', 'level'],
+    });
+
+    if (!project) {
+      return;
+    }
+
+    // Get the volunteer record
     const volunteer = await this.projectVolunteerRepository.findOne({
       where: { projectId, userId },
     });
 
-    if (volunteer) {
-      volunteer.tasksCompleted += 1;
-      await this.projectVolunteerRepository.save(volunteer);
+    if (!volunteer) {
+      return;
+    }
+
+    // Calculate score based on project level
+    const scoreMap: Record<ProjectLevel, number> = {
+      [ProjectLevel.BEGINNER]: 30,
+      [ProjectLevel.INTERMEDIATE]: 50,
+      [ProjectLevel.ADVANCED]: 80,
+    };
+
+    const scoreValue = scoreMap[project.level] || 0;
+
+    // Add score if task is being completed (atomic operation)
+    if (newStatus === TaskStatus.COMPLETED && oldStatus !== TaskStatus.COMPLETED) {
+      await this.projectVolunteerRepository
+        .createQueryBuilder()
+        .update(ProjectVolunteer)
+        .set({
+          contributionScore: () => `"contribution_score" + ${scoreValue}`,
+        })
+        .where('project_id = :projectId', { projectId })
+        .andWhere('user_id = :userId', { userId })
+        .execute();
+
+      this.loggingService.log(
+        `Volunteer ${userId} earned ${scoreValue} points for completing task in ${project.level} project ${projectId}`,
+        'TasksService',
+      );
+    }
+
+    // Subtract score if task status is changed from completed to another status (atomic operation)
+    if (oldStatus === TaskStatus.COMPLETED && newStatus !== TaskStatus.COMPLETED) {
+      await this.projectVolunteerRepository
+        .createQueryBuilder()
+        .update(ProjectVolunteer)
+        .set({
+          contributionScore: () => `GREATEST("contribution_score" - ${scoreValue}, 0)`,
+        })
+        .where('project_id = :projectId', { projectId })
+        .andWhere('user_id = :userId', { userId })
+        .execute();
+
+      this.loggingService.log(
+        `Volunteer ${userId} lost ${scoreValue} points for uncompleting task in ${project.level} project ${projectId}`,
+        'TasksService',
+      );
     }
   }
 
