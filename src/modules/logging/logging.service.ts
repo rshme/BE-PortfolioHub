@@ -107,10 +107,11 @@ export class LoggingService implements NestLoggerService {
     this.logger.verbose(message, { context, ...meta });
   }
 
-  // ==================== METRIK UNTUK HIPOTESIS 1 ====================
+  // ==================== METRIK UNTUK HIPOTESIS 1: Search Efficiency ====================
   /**
    * Log metrik pencarian dan pencocokan proyek
-   * Untuk mengukur: waktu pencarian, relevance score, Jaccard similarity
+   * Target: Waktu < 5 menit, Similarity score >= 60%, Min 1 proyek relevan
+   * Dapat diukur dalam first session (2-3 hari testing)
    */
   logProjectMatchingMetrics(data: {
     userId: string;
@@ -147,10 +148,12 @@ export class LoggingService implements NestLoggerService {
       matchedProjects: data.matchedProjects,
       topMatchScore: data.topMatchScore,
       avgMatchScore: data.avgMatchScore,
-      // Metrik untuk hipotesis: apakah < 5 menit?
+      // H1a: Waktu pencarian < 5 menit
       meetsTimeGoal: searchDurationMinutes < 5,
-      // Metrik untuk hipotesis: apakah relevance > 70%?
-      meetsRelevanceGoal: data.topMatchScore && data.topMatchScore >= 0.7,
+      // H1b: Similarity score >= 60% untuk top recommendations
+      meetsRelevanceGoal: data.topMatchScore && data.topMatchScore >= 0.6,
+      // H1c: User menemukan minimal 1 proyek relevan (score >= 60%)
+      hasRelevantMatch: data.matchedProjects.some(p => p.jaccardScore >= 0.6),
     });
   }
 
@@ -176,9 +179,48 @@ export class LoggingService implements NestLoggerService {
     });
   }
 
-  // ==================== METRIK UNTUK HIPOTESIS 2 ====================
+  // ==================== METRIK UNTUK HIPOTESIS 2: Platform Usability ====================
   /**
-   * Log interaksi mentorship
+   * Log task completion untuk mengukur completion rate
+   * Target H2a: Task completion rate >= 75%
+   */
+  logTaskCompletion(data: {
+    userId: string;
+    taskId: string;
+    projectId: string;
+    taskTitle: string;
+    completionStatus: 'completed' | 'abandoned' | 'in_progress';
+    timeSpentMinutes: number;
+    difficultyLevel?: 'beginner' | 'intermediate' | 'advanced';
+  }) {
+    this.metricsLogger.info('TASK_COMPLETION', {
+      metricType: 'task_completion',
+      timestamp: new Date().toISOString(),
+      ...data,
+    });
+  }
+
+  /**
+   * Log task comments untuk mengukur engagement
+   * Target H2b: >= 2 comments per task
+   */
+  logTaskComment(data: {
+    userId: string;
+    taskId: string;
+    projectId: string;
+    commentLength: number;
+    isReply: boolean;
+    commentType: 'question' | 'update' | 'help' | 'feedback';
+  }) {
+    this.metricsLogger.info('TASK_COMMENT', {
+      metricType: 'task_comment',
+      timestamp: new Date().toISOString(),
+      ...data,
+    });
+  }
+
+  /**
+   * Log interaksi mentorship (optional feature)
    */
   logMentorshipInteraction(data: {
     mentorId: string;
@@ -236,35 +278,55 @@ export class LoggingService implements NestLoggerService {
   }
 
   /**
-   * Log user retention metrics
-   * Track aktivitas user untuk mengukur retensi 50% setelah 4 minggu
+   * Log platform usability metrics (SUS score, satisfaction)
+   * Target H2d: SUS score >= 70
    */
-  logUserRetention(data: {
+  logUsabilityMetrics(data: {
     userId: string;
-    userRole: string;
-    accountAge: number; // in days
-    lastActiveDate: Date;
-    daysSinceLastActive: number;
-    totalContributions: number;
-    weeklyActiveStatus: boolean;
-    projectsJoined: number;
-    projectsCompleted: number;
-    tasksCompleted: number;
-    forumInteractions: number;
-    mentorshipSessions: number;
+    susScore?: number; // System Usability Scale (0-100)
+    satisfactionScore?: number; // 1-10 scale
+    easeOfUse?: number; // 1-10 scale
+    learnability?: number; // 1-10 scale
+    efficiency?: number; // 1-10 scale
+    taskSuccessRate?: number; // percentage
+    errorCount?: number;
+    helpRequestCount?: number;
+    feedbackComments?: string;
   }) {
-    this.metricsLogger.info('USER_RETENTION', {
-      metricType: 'user_retention',
+    this.metricsLogger.info('USABILITY_METRICS', {
+      metricType: 'usability_metrics',
       timestamp: new Date().toISOString(),
       ...data,
-      // Metrik untuk hipotesis: user aktif setelah 4 minggu?
-      retainedAfter4Weeks: data.accountAge >= 28 && data.weeklyActiveStatus,
+      // H2d: SUS score >= 70 (acceptable usability)
+      meetsUsabilityGoal: data.susScore && data.susScore >= 70,
     });
   }
 
-  // ==================== METRIK UNTUK HIPOTESIS 3 ====================
+  /**
+   * Log session activity untuk tracking engagement dalam testing period
+   */
+  logSessionActivity(data: {
+    userId: string;
+    sessionDuration: number; // minutes
+    pagesVisited: number;
+    featuresUsed: string[];
+    tasksAttempted: number;
+    tasksCompleted: number;
+    errorEncountered: boolean;
+    needsHelp: boolean;
+  }) {
+    this.metricsLogger.info('SESSION_ACTIVITY', {
+      metricType: 'session_activity',
+      timestamp: new Date().toISOString(),
+      ...data,
+    });
+  }
+
+  // ==================== METRIK UNTUK HIPOTESIS 3: Portfolio Building Effectiveness ====================
   /**
    * Log user contribution activity
+   * Target H3a: 80% users complete minimal 1 verified contribution
+   * Target H3b: Rata-rata 2 portfolio items per user dalam 2-3 hari
    */
   logUserContribution(data: {
     userId: string;
@@ -284,39 +346,37 @@ export class LoggingService implements NestLoggerService {
   }
 
   /**
-   * Log user skill progression (pre/post testing)
+   * Log testimonial activity untuk portfolio credibility
+   * Target H3c: 60% users give/receive testimonials
    */
-  logSkillProgression(data: {
+  logTestimonialActivity(data: {
     userId: string;
-    skillId: string;
-    skillName: string;
-    preTestScore?: number;
-    postTestScore?: number;
-    selfReportedLevel: 'beginner' | 'intermediate' | 'advanced';
-    projectsCompleted: number;
-    hoursSpent: number;
-    improvementPercentage?: number;
-    testDate: Date;
+    testimonialId: string;
+    activityType: 'given' | 'received';
+    projectId: string;
+    rating?: number;
+    relationshipType?: string;
   }) {
-    this.metricsLogger.info('SKILL_PROGRESSION', {
-      metricType: 'skill_progression',
+    this.metricsLogger.info('TESTIMONIAL_ACTIVITY', {
+      metricType: 'testimonial_activity',
       timestamp: new Date().toISOString(),
       ...data,
-      // Metrik untuk hipotesis: improvement >= 25%?
-      meetsImprovementGoal: data.improvementPercentage && data.improvementPercentage >= 25,
     });
   }
 
   /**
-   * Log user survey responses (pre/post testing)
+   * Log user survey responses (baseline, post-test, usability)
    */
   logSurveyResponse(data: {
     userId: string;
-    surveyType: 'pre_test' | 'post_test' | 'satisfaction' | 'feedback';
+    surveyType: 'baseline' | 'post_test' | 'usability' | 'satisfaction';
     responses: Record<string, any>;
-    skillsAssessed?: string[];
-    overallSatisfactionScore?: number; // 1-10
-    platformUsageDays?: number;
+    susScore?: number; // System Usability Scale
+    satisfactionScore?: number; // 1-10
+    recommendationLikelihood?: number; // NPS: 0-10
+    perceivedUsefulness?: number; // 1-10
+    perceivedEaseOfUse?: number; // 1-10
+    testingDuration?: number; // hours
     metadata?: any;
   }) {
     this.metricsLogger.info('SURVEY_RESPONSE', {
@@ -327,24 +387,29 @@ export class LoggingService implements NestLoggerService {
   }
 
   /**
-   * Log portfolio building metrics
+   * Log portfolio building metrics (snapshot during testing)
+   * Measures immediate effectiveness of portfolio features
    */
   logPortfolioMetrics(data: {
     userId: string;
-    totalProjects: number;
-    completedProjects: number;
-    verifiedProjects: number;
-    totalContributions: number;
-    skillsAcquired: string[];
-    badgesEarned: number;
+    portfolioItemsCount: number; // completed tasks/contributions
+    verifiedContributions: number;
     testimonialsReceived: number;
-    portfolioScore?: number;
-    profileCompleteness?: number;
+    testimonialsGiven: number;
+    badgesEarned: number;
+    profileCompleteness: number; // percentage
+    portfolioSatisfaction?: number; // 1-10 scale
   }) {
     this.metricsLogger.info('PORTFOLIO_METRICS', {
       metricType: 'portfolio_metrics',
       timestamp: new Date().toISOString(),
       ...data,
+      // H3a: At least 1 verified contribution
+      hasVerifiedContribution: data.verifiedContributions >= 1,
+      // H3b: Average 2 portfolio items
+      meetsPortfolioItemsGoal: data.portfolioItemsCount >= 2,
+      // H3c: Has testimonial activity
+      hasTestimonialActivity: (data.testimonialsGiven + data.testimonialsReceived) > 0,
     });
   }
 

@@ -497,29 +497,12 @@ export class UsersService {
 
     this.loggingService.logPortfolioMetrics({
       userId: user.id,
-      totalProjects: projectsJoined,
-      completedProjects: projectsCompleted,
-      verifiedProjects: 0, // Can be enhanced
-      totalContributions,
-      skillsAcquired: [], // Can be enhanced with skill names
-      badgesEarned: badges,
+      portfolioItemsCount: projectsJoined + totalContributions,
+      verifiedContributions: totalContributions,
       testimonialsReceived: testimonials,
-    });
-
-    // Log user retention metrics
-    this.loggingService.logUserRetention({
-      userId: user.id,
-      userRole: user.role,
-      accountAge: accountAgeDays,
-      lastActiveDate: new Date(lastActiveDate),
-      daysSinceLastActive,
-      totalContributions,
-      weeklyActiveStatus,
-      projectsJoined,
-      projectsCompleted,
-      tasksCompleted,
-      forumInteractions: 0, // Will be tracked separately
-      mentorshipSessions,
+      testimonialsGiven: 0, // Can be enhanced by tracking given testimonials
+      badgesEarned: badges,
+      profileCompleteness: 80, // Can be calculated based on filled fields
     });
 
     return roleStats;
@@ -1367,50 +1350,19 @@ export class UsersService {
     const accountAgeMs = Date.now() - new Date(user.createdAt).getTime();
     const platformUsageDays = Math.floor(accountAgeMs / (1000 * 60 * 60 * 24));
 
-    // Extract skill assessments
-    const skillsAssessed = surveyDto.skillAssessments?.map((sa: any) => sa.skillName) || [];
-
-    // Log survey response
+    // Log survey response dengan immediate satisfaction metrics
     this.loggingService.logSurveyResponse({
       userId,
       surveyType: surveyDto.surveyType,
       responses: surveyDto.responses || {},
-      skillsAssessed,
-      overallSatisfactionScore: surveyDto.overallSatisfaction,
-      platformUsageDays,
+      susScore: surveyDto.responses?.susScore as number,
+      satisfactionScore: surveyDto.overallSatisfaction,
+      recommendationLikelihood: surveyDto.responses?.npsScore as number,
+      perceivedUsefulness: surveyDto.responses?.perceivedUsefulness as number,
+      perceivedEaseOfUse: surveyDto.responses?.perceivedEaseOfUse as number,
+      testingDuration: platformUsageDays * 24, // convert to hours (approximate)
       metadata: surveyDto.metadata,
     });
-
-    // Log skill progression if skill assessments provided
-    if (surveyDto.skillAssessments && surveyDto.skillAssessments.length > 0) {
-      for (const assessment of surveyDto.skillAssessments) {
-        let improvementPercentage: number | undefined;
-        
-        if (assessment.preTestScore && assessment.postTestScore) {
-          improvementPercentage =
-            ((assessment.postTestScore - assessment.preTestScore) /
-              assessment.preTestScore) *
-            100;
-        }
-
-        // Get user statistics for hours spent
-        const userStats = await this.getUserStatistics(userId);
-        const projectsCompleted = userStats.volunteer?.projects?.completed || 0;
-
-        this.loggingService.logSkillProgression({
-          userId,
-          skillId: assessment.skillId,
-          skillName: assessment.skillName,
-          preTestScore: assessment.preTestScore,
-          postTestScore: assessment.postTestScore,
-          selfReportedLevel: assessment.selfReportedLevel || 'beginner',
-          projectsCompleted,
-          hoursSpent: 0, // Can be enhanced with actual time tracking
-          improvementPercentage,
-          testDate: new Date(),
-        });
-      }
-    }
 
     return {
       message: 'Survey submitted successfully',

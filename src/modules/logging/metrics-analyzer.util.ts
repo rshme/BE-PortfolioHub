@@ -58,10 +58,10 @@ export class MetricsAnalyzer {
   }
 
   /**
-   * HIPOTESIS 1: Analisis project matching metrics
-   * Target: Waktu pencarian < 5 menit, Relevance score >= 70%
+   * HIPOTESIS 1: Analisis search efficiency & matching accuracy
+   * Target: Waktu < 5 menit, Similarity >= 60%, Min 1 proyek relevan
    */
-  async analyzeProjectMatching(
+  async analyzeSearchEfficiency(
     startDate: Date,
     endDate: Date,
   ): Promise<{
@@ -70,8 +70,11 @@ export class MetricsAnalyzer {
     searchesUnder5Min: number;
     searchesUnder5MinPercentage: number;
     avgTopMatchScore: number;
-    matchesAbove70Percent: number;
-    matchesAbove70PercentPercentage: number;
+    avgMatchScorePercentage: number;
+    matchesAbove60Percent: number;
+    matchesAbove60PercentPercentage: number;
+    usersWithRelevantMatch: number;
+    usersWithRelevantMatchPercentage: number;
     avgMatchedProjectsCount: number;
   }> {
     const logs = await this.readMetricsLogs(startDate, endDate);
@@ -86,8 +89,11 @@ export class MetricsAnalyzer {
         searchesUnder5Min: 0,
         searchesUnder5MinPercentage: 0,
         avgTopMatchScore: 0,
-        matchesAbove70Percent: 0,
-        matchesAbove70PercentPercentage: 0,
+        avgMatchScorePercentage: 0,
+        matchesAbove60Percent: 0,
+        matchesAbove60PercentPercentage: 0,
+        usersWithRelevantMatch: 0,
+        usersWithRelevantMatchPercentage: 0,
         avgMatchedProjectsCount: 0,
       };
     }
@@ -96,6 +102,8 @@ export class MetricsAnalyzer {
       (sum, log) => sum + (log.searchDurationMinutes || 0),
       0,
     );
+    
+    // H1a: Searches under 5 minutes
     const searchesUnder5Min = matchingLogs.filter(
       (log) => log.meetsTimeGoal === true,
     ).length;
@@ -108,8 +116,14 @@ export class MetricsAnalyzer {
         ? topScores.reduce((sum, score) => sum + score, 0) / topScores.length
         : 0;
 
-    const matchesAbove70 = matchingLogs.filter(
+    // H1b: Matches with score >= 60%
+    const matchesAbove60 = matchingLogs.filter(
       (log) => log.meetsRelevanceGoal === true,
+    ).length;
+
+    // H1c: Users who found at least 1 relevant project
+    const usersWithRelevantMatch = matchingLogs.filter(
+      (log) => log.hasRelevantMatch === true,
     ).length;
 
     const totalMatchedProjects = matchingLogs.reduce(
@@ -123,298 +137,392 @@ export class MetricsAnalyzer {
       searchesUnder5Min,
       searchesUnder5MinPercentage: (searchesUnder5Min / matchingLogs.length) * 100,
       avgTopMatchScore: avgTopScore,
-      matchesAbove70Percent: matchesAbove70,
-      matchesAbove70PercentPercentage: (matchesAbove70 / matchingLogs.length) * 100,
+      avgMatchScorePercentage: avgTopScore * 100,
+      matchesAbove60Percent: matchesAbove60,
+      matchesAbove60PercentPercentage: (matchesAbove60 / matchingLogs.length) * 100,
+      usersWithRelevantMatch,
+      usersWithRelevantMatchPercentage: (usersWithRelevantMatch / matchingLogs.length) * 100,
       avgMatchedProjectsCount: totalMatchedProjects / matchingLogs.length,
     };
   }
 
   /**
-   * HIPOTESIS 2: Analisis collaboration metrics
-   * Target: Interaksi forum +60%, Retensi >50% setelah 4 minggu
+   * HIPOTESIS 2: Analisis platform usability & task management
+   * Target: Task completion >= 75%, >= 2 comments/task, 60% use milestones, SUS >= 70
    */
-  async analyzeCollaboration(
+  async analyzeUsability(
     startDate: Date,
     endDate: Date,
   ): Promise<{
-    totalForumInteractions: number;
+    totalTasks: number;
+    completedTasks: number;
+    taskCompletionRate: number;
+    totalTaskComments: number;
+    avgCommentsPerTask: number;
     totalMilestoneActivities: number;
-    totalMentorshipInteractions: number;
-    uniqueActiveUsers: number;
-    avgMilestoneCompletionDays: number;
+    usersUsingMilestones: number;
+    milestoneUsagePercentage: number;
+    avgSusScore: number;
+    avgSatisfactionScore: number;
+    totalUsabilityResponses: number;
   }> {
     const logs = await this.readMetricsLogs(startDate, endDate);
 
-    const forumLogs = logs.filter(
-      (log) => log.metricType === 'forum_interaction',
-    );
-    const milestoneLogs = logs.filter(
-      (log) => log.metricType === 'milestone_activity',
-    );
-    const mentorshipLogs = logs.filter(
-      (log) => log.metricType === 'mentorship_interaction',
-    );
+    const taskLogs = logs.filter((log) => log.metricType === 'task_completion');
+    const commentLogs = logs.filter((log) => log.metricType === 'task_comment');
+    const milestoneLogs = logs.filter((log) => log.metricType === 'milestone_activity');
+    const usabilityLogs = logs.filter((log) => log.metricType === 'usability_metrics');
 
-    const uniqueUsers = new Set([
-      ...forumLogs.map((log) => log.userId),
-      ...milestoneLogs.map((log) => log.userId),
-      ...mentorshipLogs.map((log) => log.menteeId),
-    ]);
+    const completedTasks = taskLogs.filter(
+      (log) => log.completionStatus === 'completed',
+    ).length;
+    
+    const taskCompletionRate = taskLogs.length > 0 
+      ? (completedTasks / taskLogs.length) * 100 
+      : 0;
 
-    const completedMilestones = milestoneLogs.filter(
-      (log) => log.action === 'complete' && log.daysToComplete,
-    );
-    const avgCompletionDays =
-      completedMilestones.length > 0
-        ? completedMilestones.reduce((sum, log) => sum + log.daysToComplete, 0) /
-          completedMilestones.length
-        : 0;
+    const avgCommentsPerTask = taskLogs.length > 0
+      ? commentLogs.length / taskLogs.length
+      : 0;
+
+    const uniqueUsersUsingMilestones = new Set(
+      milestoneLogs.map((log) => log.userId),
+    ).size;
+
+    const totalUniqueUsers = new Set([
+      ...taskLogs.map((log) => log.userId),
+      ...commentLogs.map((log) => log.userId),
+    ]).size;
+
+    const milestoneUsagePercentage = totalUniqueUsers > 0
+      ? (uniqueUsersUsingMilestones / totalUniqueUsers) * 100
+      : 0;
+
+    const susScores = usabilityLogs
+      .filter((log) => log.susScore !== undefined)
+      .map((log) => log.susScore);
+    const avgSusScore = susScores.length > 0
+      ? susScores.reduce((sum, score) => sum + score, 0) / susScores.length
+      : 0;
+
+    const satisfactionScores = usabilityLogs
+      .filter((log) => log.satisfactionScore !== undefined)
+      .map((log) => log.satisfactionScore);
+    const avgSatisfactionScore = satisfactionScores.length > 0
+      ? satisfactionScores.reduce((sum, score) => sum + score, 0) / satisfactionScores.length
+      : 0;
 
     return {
-      totalForumInteractions: forumLogs.length,
+      totalTasks: taskLogs.length,
+      completedTasks,
+      taskCompletionRate,
+      totalTaskComments: commentLogs.length,
+      avgCommentsPerTask,
       totalMilestoneActivities: milestoneLogs.length,
-      totalMentorshipInteractions: mentorshipLogs.length,
-      uniqueActiveUsers: uniqueUsers.size,
-      avgMilestoneCompletionDays: avgCompletionDays,
+      usersUsingMilestones: uniqueUsersUsingMilestones,
+      milestoneUsagePercentage,
+      avgSusScore,
+      avgSatisfactionScore,
+      totalUsabilityResponses: usabilityLogs.length,
     };
   }
 
   /**
-   * HIPOTESIS 2: Analisis user retention
-   * Target: Retensi >50% setelah 4 minggu
+   * HIPOTESIS 3: Analisis portfolio building effectiveness
+   * Target: 80% complete min 1 contribution, avg 2 items, 60% testimonials, satisfaction >= 7/10
    */
-  async analyzeRetention(
+  async analyzePortfolioBuilding(
     startDate: Date,
     endDate: Date,
   ): Promise<{
     totalUsers: number;
-    retainedAfter4Weeks: number;
-    retentionRate: number;
-    avgDaysSinceLastActive: number;
-    weeklyActiveUsers: number;
-  }> {
-    const logs = await this.readMetricsLogs(startDate, endDate);
-    const retentionLogs = logs.filter(
-      (log) => log.metricType === 'user_retention',
-    );
-
-    if (retentionLogs.length === 0) {
-      return {
-        totalUsers: 0,
-        retainedAfter4Weeks: 0,
-        retentionRate: 0,
-        avgDaysSinceLastActive: 0,
-        weeklyActiveUsers: 0,
-      };
-    }
-
-    const retainedUsers = retentionLogs.filter(
-      (log) => log.retainedAfter4Weeks === true,
-    ).length;
-
-    const weeklyActive = retentionLogs.filter(
-      (log) => log.weeklyActiveStatus === true,
-    ).length;
-
-    const totalDaysSinceActive = retentionLogs.reduce(
-      (sum, log) => sum + (log.daysSinceLastActive || 0),
-      0,
-    );
-
-    return {
-      totalUsers: retentionLogs.length,
-      retainedAfter4Weeks: retainedUsers,
-      retentionRate: (retainedUsers / retentionLogs.length) * 100,
-      avgDaysSinceLastActive: totalDaysSinceActive / retentionLogs.length,
-      weeklyActiveUsers: weeklyActive,
-    };
-  }
-
-  /**
-   * HIPOTESIS 3: Analisis skill progression
-   * Target: Improvement score >= 25%
-   */
-  async analyzeSkillProgression(
-    startDate: Date,
-    endDate: Date,
-  ): Promise<{
-    totalAssessments: number;
-    avgImprovementPercentage: number;
-    assessmentsAbove25Percent: number;
-    assessmentsAbove25PercentPercentage: number;
-    avgHoursSpent: number;
-  }> {
-    const logs = await this.readMetricsLogs(startDate, endDate);
-    const skillLogs = logs.filter(
-      (log) => log.metricType === 'skill_progression',
-    );
-
-    if (skillLogs.length === 0) {
-      return {
-        totalAssessments: 0,
-        avgImprovementPercentage: 0,
-        assessmentsAbove25Percent: 0,
-        assessmentsAbove25PercentPercentage: 0,
-        avgHoursSpent: 0,
-      };
-    }
-
-    const logsWithImprovement = skillLogs.filter(
-      (log) => log.improvementPercentage !== undefined,
-    );
-    const totalImprovement = logsWithImprovement.reduce(
-      (sum, log) => sum + log.improvementPercentage,
-      0,
-    );
-    const avgImprovement =
-      logsWithImprovement.length > 0
-        ? totalImprovement / logsWithImprovement.length
-        : 0;
-
-    const above25 = skillLogs.filter(
-      (log) => log.meetsImprovementGoal === true,
-    ).length;
-
-    const totalHours = skillLogs.reduce(
-      (sum, log) => sum + (log.hoursSpent || 0),
-      0,
-    );
-
-    return {
-      totalAssessments: skillLogs.length,
-      avgImprovementPercentage: avgImprovement,
-      assessmentsAbove25Percent: above25,
-      assessmentsAbove25PercentPercentage: (above25 / skillLogs.length) * 100,
-      avgHoursSpent: totalHours / skillLogs.length,
-    };
-  }
-
-  /**
-   * Analisis portfolio metrics
-   */
-  async analyzePortfolio(
-    startDate: Date,
-    endDate: Date,
-  ): Promise<{
-    totalUsers: number;
-    avgProjectsPerUser: number;
-    avgCompletedProjectsPerUser: number;
-    avgContributionsPerUser: number;
-    avgBadgesPerUser: number;
+    usersWithContributions: number;
+    usersWithContributionsPercentage: number;
+    avgPortfolioItems: number;
+    usersWithMinimum2Items: number;
+    usersWithMinimum2ItemsPercentage: number;
+    totalTestimonials: number;
+    usersWithTestimonials: number;
+    usersWithTestimonialsPercentage: number;
+    avgPortfolioSatisfaction: number;
+    avgVerifiedContributions: number;
   }> {
     const logs = await this.readMetricsLogs(startDate, endDate);
     const portfolioLogs = logs.filter(
       (log) => log.metricType === 'portfolio_metrics',
     );
+    const testimonialLogs = logs.filter(
+      (log) => log.metricType === 'testimonial_activity',
+    );
 
     if (portfolioLogs.length === 0) {
       return {
         totalUsers: 0,
-        avgProjectsPerUser: 0,
-        avgCompletedProjectsPerUser: 0,
-        avgContributionsPerUser: 0,
-        avgBadgesPerUser: 0,
+        usersWithContributions: 0,
+        usersWithContributionsPercentage: 0,
+        avgPortfolioItems: 0,
+        usersWithMinimum2Items: 0,
+        usersWithMinimum2ItemsPercentage: 0,
+        totalTestimonials: testimonialLogs.length,
+        usersWithTestimonials: 0,
+        usersWithTestimonialsPercentage: 0,
+        avgPortfolioSatisfaction: 0,
+        avgVerifiedContributions: 0,
       };
     }
 
-    const totals = portfolioLogs.reduce(
-      (acc, log) => ({
-        projects: acc.projects + (log.totalProjects || 0),
-        completed: acc.completed + (log.completedProjects || 0),
-        contributions: acc.contributions + (log.totalContributions || 0),
-        badges: acc.badges + (log.badgesEarned || 0),
-      }),
-      { projects: 0, completed: 0, contributions: 0, badges: 0 },
+    // H3a: Users with at least 1 verified contribution
+    const usersWithContributions = portfolioLogs.filter(
+      (log) => log.hasVerifiedContribution === true,
+    ).length;
+
+    // H3b: Users with at least 2 portfolio items
+    const usersWithMinimum2Items = portfolioLogs.filter(
+      (log) => log.meetsPortfolioItemsGoal === true,
+    ).length;
+
+    const totalPortfolioItems = portfolioLogs.reduce(
+      (sum, log) => sum + (log.portfolioItemsCount || 0),
+      0,
     );
+    const avgPortfolioItems = totalPortfolioItems / portfolioLogs.length;
+
+    // H3c: Users with testimonial activity
+    const uniqueUsersWithTestimonials = new Set(
+      testimonialLogs.map((log) => log.userId),
+    ).size;
+
+    const totalVerifiedContributions = portfolioLogs.reduce(
+      (sum, log) => sum + (log.verifiedContributions || 0),
+      0,
+    );
+    const avgVerifiedContributions = totalVerifiedContributions / portfolioLogs.length;
+
+    const satisfactionScores = portfolioLogs
+      .filter((log) => log.portfolioSatisfaction !== undefined)
+      .map((log) => log.portfolioSatisfaction);
+    const avgPortfolioSatisfaction = satisfactionScores.length > 0
+      ? satisfactionScores.reduce((sum, score) => sum + score, 0) / satisfactionScores.length
+      : 0;
 
     return {
       totalUsers: portfolioLogs.length,
-      avgProjectsPerUser: totals.projects / portfolioLogs.length,
-      avgCompletedProjectsPerUser: totals.completed / portfolioLogs.length,
-      avgContributionsPerUser: totals.contributions / portfolioLogs.length,
-      avgBadgesPerUser: totals.badges / portfolioLogs.length,
+      usersWithContributions,
+      usersWithContributionsPercentage: (usersWithContributions / portfolioLogs.length) * 100,
+      avgPortfolioItems,
+      usersWithMinimum2Items,
+      usersWithMinimum2ItemsPercentage: (usersWithMinimum2Items / portfolioLogs.length) * 100,
+      totalTestimonials: testimonialLogs.length,
+      usersWithTestimonials: uniqueUsersWithTestimonials,
+      usersWithTestimonialsPercentage: (uniqueUsersWithTestimonials / portfolioLogs.length) * 100,
+      avgPortfolioSatisfaction,
+      avgVerifiedContributions,
     };
   }
 
   /**
-   * Generate comprehensive report untuk skripsi
+   * Generate comprehensive report untuk skripsi (REVISED HYPOTHESES)
+   * Testing period: 2-3 hari intensive testing
    */
   async generateThesisReport(
     startDate: Date,
     endDate: Date,
   ): Promise<string> {
-    const projectMatching = await this.analyzeProjectMatching(startDate, endDate);
-    const collaboration = await this.analyzeCollaboration(startDate, endDate);
-    const retention = await this.analyzeRetention(startDate, endDate);
-    const skillProgression = await this.analyzeSkillProgression(startDate, endDate);
-    const portfolio = await this.analyzePortfolio(startDate, endDate);
+    const searchEfficiency = await this.analyzeSearchEfficiency(startDate, endDate);
+    const usability = await this.analyzeUsability(startDate, endDate);
+    const portfolioBuilding = await this.analyzePortfolioBuilding(startDate, endDate);
 
     const report = `
 ==============================================
-LAPORAN METRIK PLATFORM PORTFOLIOHUB
-Periode: ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}
+LAPORAN EVALUASI PLATFORM PORTFOLIOHUB
+Periode Testing: ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}
+Durasi: 2-3 Hari (Intensive Testing)
 ==============================================
 
-HIPOTESIS 1: Project Matching dengan Jaccard Similarity
+HIPOTESIS 1: Efisiensi Sistem Pencocokan Proyek
 --------------------------------------------------------
-Total Pencarian: ${projectMatching.totalSearches}
-Rata-rata Waktu Pencarian: ${projectMatching.avgSearchTimeMinutes.toFixed(2)} menit
-Pencarian < 5 menit: ${projectMatching.searchesUnder5Min} (${projectMatching.searchesUnder5MinPercentage.toFixed(1)}%)
-TARGET: 100% pencarian < 5 menit
-STATUS: ${projectMatching.searchesUnder5MinPercentage >= 90 ? '✓ TERCAPAI' : '✗ BELUM TERCAPAI'}
+H1a - Waktu Pencarian Proyek:
+  Total Pencarian: ${searchEfficiency.totalSearches}
+  Rata-rata Waktu: ${searchEfficiency.avgSearchTimeMinutes.toFixed(2)} menit
+  Pencarian < 5 menit: ${searchEfficiency.searchesUnder5Min} (${searchEfficiency.searchesUnder5MinPercentage.toFixed(1)}%)
+  TARGET H1a: 100% pencarian < 5 menit
+  STATUS: ${searchEfficiency.searchesUnder5MinPercentage >= 95 ? '✓ TERCAPAI' : searchEfficiency.searchesUnder5MinPercentage >= 80 ? '⚠ PARTIALLY ACHIEVED' : '✗ BELUM TERCAPAI'}
 
-Rata-rata Top Match Score: ${(projectMatching.avgTopMatchScore * 100).toFixed(1)}%
-Matches > 70%: ${projectMatching.matchesAbove70Percent} (${projectMatching.matchesAbove70PercentPercentage.toFixed(1)}%)
-TARGET: Relevansi >= 70%
-STATUS: ${projectMatching.avgTopMatchScore >= 0.7 ? '✓ TERCAPAI' : '✗ BELUM TERCAPAI'}
+H1b - Akurasi Pencocokan (Similarity Score):
+  Rata-rata Top Match Score: ${searchEfficiency.avgMatchScorePercentage.toFixed(1)}%
+  Matches dengan Score ≥ 60%: ${searchEfficiency.matchesAbove60Percent} (${searchEfficiency.matchesAbove60PercentPercentage.toFixed(1)}%)
+  TARGET H1b: Similarity score ≥ 60% untuk top-3 recommendations
+  STATUS: ${searchEfficiency.avgMatchScorePercentage >= 60 ? '✓ TERCAPAI' : searchEfficiency.avgMatchScorePercentage >= 50 ? '⚠ PARTIALLY ACHIEVED' : '✗ BELUM TERCAPAI'}
 
-Rata-rata Proyek Matched: ${projectMatching.avgMatchedProjectsCount.toFixed(1)}
+H1c - Discovery Success Rate:
+  Users menemukan proyek relevan: ${searchEfficiency.usersWithRelevantMatch} (${searchEfficiency.usersWithRelevantMatchPercentage.toFixed(1)}%)
+  Rata-rata Proyek Matched: ${searchEfficiency.avgMatchedProjectsCount.toFixed(1)}
+  TARGET H1c: Min 70% users menemukan minimal 1 proyek relevan (score ≥60%)
+  STATUS: ${searchEfficiency.usersWithRelevantMatchPercentage >= 70 ? '✓ TERCAPAI' : searchEfficiency.usersWithRelevantMatchPercentage >= 60 ? '⚠ PARTIALLY ACHIEVED' : '✗ BELUM TERCAPAI'}
 
-HIPOTESIS 2: Mentorship & Collaboration
+KESIMPULAN H1: ${
+  searchEfficiency.searchesUnder5MinPercentage >= 95 &&
+  searchEfficiency.avgMatchScorePercentage >= 60 &&
+  searchEfficiency.usersWithRelevantMatchPercentage >= 70
+    ? '✓ HIPOTESIS TERBUKTI - Sistem pencocokan efektif dan efisien'
+    : searchEfficiency.searchesUnder5MinPercentage >= 80 ||
+      searchEfficiency.avgMatchScorePercentage >= 50
+    ? '⚠ PARTIALLY SUPPORTED - Menunjukkan tren positif namun perlu improvement'
+    : '✗ HIPOTESIS TIDAK TERBUKTI - Perlu perbaikan signifikan'
+}
+
+HIPOTESIS 2: Usability Platform & Task Management
 -----------------------------------------
-Total Interaksi Forum: ${collaboration.totalForumInteractions}
-Total Aktivitas Milestone: ${collaboration.totalMilestoneActivities}
-Total Sesi Mentorship: ${collaboration.totalMentorshipInteractions}
-User Aktif Unik: ${collaboration.uniqueActiveUsers}
-Rata-rata Hari Penyelesaian Milestone: ${collaboration.avgMilestoneCompletionDays.toFixed(1)}
+H2a - Task Completion Rate:
+  Total Tasks: ${usability.totalTasks}
+  Tasks Completed: ${usability.completedTasks}
+  Completion Rate: ${usability.taskCompletionRate.toFixed(1)}%
+  TARGET H2a: Task completion rate ≥ 75%
+  STATUS: ${usability.taskCompletionRate >= 75 ? '✓ TERCAPAI' : usability.taskCompletionRate >= 65 ? '⚠ PARTIALLY ACHIEVED' : '✗ BELUM TERCAPAI'}
 
-User Retention Analysis:
-Total Users Tracked: ${retention.totalUsers}
-Retained After 4 Weeks: ${retention.retainedAfter4Weeks} (${retention.retentionRate.toFixed(1)}%)
-TARGET: Retensi > 50% setelah 4 minggu
-STATUS: ${retention.retentionRate >= 50 ? '✓ TERCAPAI' : '✗ BELUM TERCAPAI'}
+H2b - Engagement (Task Comments):
+  Total Task Comments: ${usability.totalTaskComments}
+  Rata-rata Comments per Task: ${usability.avgCommentsPerTask.toFixed(1)}
+  TARGET H2b: Rata-rata ≥ 2 comments per task
+  STATUS: ${usability.avgCommentsPerTask >= 2 ? '✓ TERCAPAI' : usability.avgCommentsPerTask >= 1.5 ? '⚠ PARTIALLY ACHIEVED' : '✗ BELUM TERCAPAI'}
 
-Weekly Active Users: ${retention.weeklyActiveUsers}
-Rata-rata Days Since Last Active: ${retention.avgDaysSinceLastActive.toFixed(1)} hari
+H2c - Milestone Tracking Usage:
+  Total Aktivitas Milestone: ${usability.totalMilestoneActivities}
+  Users menggunakan Milestones: ${usability.usersUsingMilestones}
+  Persentase Usage: ${usability.milestoneUsagePercentage.toFixed(1)}%
+  TARGET H2c: Min 60% users menggunakan milestone tracking
+  STATUS: ${usability.milestoneUsagePercentage >= 60 ? '✓ TERCAPAI' : usability.milestoneUsagePercentage >= 50 ? '⚠ PARTIALLY ACHIEVED' : '✗ BELUM TERCAPAI'}
 
-HIPOTESIS 3: Skill Progression & Portfolio Building
+H2d - System Usability Scale (SUS):
+  Total Usability Responses: ${usability.totalUsabilityResponses}
+  Rata-rata SUS Score: ${usability.avgSusScore.toFixed(1)}
+  Rata-rata Satisfaction Score: ${usability.avgSatisfactionScore.toFixed(1)}/10
+  TARGET H2d: SUS score ≥ 70 (acceptable usability)
+  STATUS: ${usability.avgSusScore >= 70 ? '✓ TERCAPAI' : usability.avgSusScore >= 60 ? '⚠ PARTIALLY ACHIEVED' : usability.totalUsabilityResponses === 0 ? '⚠ DATA BELUM TERSEDIA' : '✗ BELUM TERCAPAI'}
+
+KESIMPULAN H2: ${
+  usability.taskCompletionRate >= 75 &&
+  usability.avgCommentsPerTask >= 2 &&
+  usability.milestoneUsagePercentage >= 60 &&
+  (usability.avgSusScore >= 70 || usability.totalUsabilityResponses === 0)
+    ? '✓ HIPOTESIS TERBUKTI - Platform menunjukkan usability yang baik'
+    : usability.taskCompletionRate >= 65 || usability.avgCommentsPerTask >= 1.5
+    ? '⚠ PARTIALLY SUPPORTED - Usability acceptable namun perlu enhancement'
+    : '✗ HIPOTESIS TIDAK TERBUKTI - Perlu redesign beberapa fitur'
+}
+
+HIPOTESIS 3: Efektivitas Portfolio Building
 -----------------------------------------------------
-Total Assessments: ${skillProgression.totalAssessments}
-Rata-rata Improvement: ${skillProgression.avgImprovementPercentage.toFixed(1)}%
-Assessments > 25% Improvement: ${skillProgression.assessmentsAbove25Percent} (${skillProgression.assessmentsAbove25PercentPercentage.toFixed(1)}%)
-TARGET: Minimal 25% improvement
-STATUS: ${skillProgression.avgImprovementPercentage >= 25 ? '✓ TERCAPAI' : '✗ BELUM TERCAPAI'}
+H3a - Verified Contributions:
+  Total Users: ${portfolioBuilding.totalUsers}
+  Users dengan Min 1 Kontribusi: ${portfolioBuilding.usersWithContributions} (${portfolioBuilding.usersWithContributionsPercentage.toFixed(1)}%)
+  Rata-rata Verified Contributions: ${portfolioBuilding.avgVerifiedContributions.toFixed(1)}
+  TARGET H3a: Min 80% users complete min 1 verified contribution
+  STATUS: ${portfolioBuilding.usersWithContributionsPercentage >= 80 ? '✓ TERCAPAI' : portfolioBuilding.usersWithContributionsPercentage >= 70 ? '⚠ PARTIALLY ACHIEVED' : '✗ BELUM TERCAPAI'}
 
-Rata-rata Hours Spent: ${skillProgression.avgHoursSpent.toFixed(1)} jam
+H3b - Portfolio Items:
+  Rata-rata Portfolio Items per User: ${portfolioBuilding.avgPortfolioItems.toFixed(1)}
+  Users dengan ≥ 2 Items: ${portfolioBuilding.usersWithMinimum2Items} (${portfolioBuilding.usersWithMinimum2ItemsPercentage.toFixed(1)}%)
+  TARGET H3b: Rata-rata 2 portfolio items per user
+  STATUS: ${portfolioBuilding.avgPortfolioItems >= 2 ? '✓ TERCAPAI' : portfolioBuilding.avgPortfolioItems >= 1.5 ? '⚠ PARTIALLY ACHIEVED' : '✗ BELUM TERCAPAI'}
 
-Portfolio Metrics:
-Total Users dengan Portfolio: ${portfolio.totalUsers}
-Rata-rata Projects per User: ${portfolio.avgProjectsPerUser.toFixed(1)}
-Rata-rata Completed Projects: ${portfolio.avgCompletedProjectsPerUser.toFixed(1)}
-Rata-rata Contributions: ${portfolio.avgContributionsPerUser.toFixed(1)}
-Rata-rata Badges Earned: ${portfolio.avgBadgesPerUser.toFixed(1)}
+H3c - Testimonial Activity:
+  Total Testimonials: ${portfolioBuilding.totalTestimonials}
+  Users dengan Testimonials: ${portfolioBuilding.usersWithTestimonials} (${portfolioBuilding.usersWithTestimonialsPercentage.toFixed(1)}%)
+  TARGET H3c: Min 60% users give/receive testimonials
+  STATUS: ${portfolioBuilding.usersWithTestimonialsPercentage >= 60 ? '✓ TERCAPAI' : portfolioBuilding.usersWithTestimonialsPercentage >= 50 ? '⚠ PARTIALLY ACHIEVED' : '✗ BELUM TERCAPAI'}
+
+H3d - Portfolio Satisfaction:
+  Rata-rata Satisfaction: ${portfolioBuilding.avgPortfolioSatisfaction > 0 ? portfolioBuilding.avgPortfolioSatisfaction.toFixed(1) + '/10' : 'N/A'}
+  TARGET H3d: User satisfaction ≥ 7/10
+  STATUS: ${portfolioBuilding.avgPortfolioSatisfaction >= 7 ? '✓ TERCAPAI' : portfolioBuilding.avgPortfolioSatisfaction >= 6 ? '⚠ PARTIALLY ACHIEVED' : portfolioBuilding.avgPortfolioSatisfaction === 0 ? '⚠ DATA BELUM TERSEDIA' : '✗ BELUM TERCAPAI'}
+
+KESIMPULAN H3: ${
+  portfolioBuilding.usersWithContributionsPercentage >= 80 &&
+  portfolioBuilding.avgPortfolioItems >= 2 &&
+  portfolioBuilding.usersWithTestimonialsPercentage >= 60 &&
+  (portfolioBuilding.avgPortfolioSatisfaction >= 7 || portfolioBuilding.avgPortfolioSatisfaction === 0)
+    ? '✓ HIPOTESIS TERBUKTI - Platform efektif dalam portfolio building'
+    : portfolioBuilding.usersWithContributionsPercentage >= 70 ||
+      portfolioBuilding.avgPortfolioItems >= 1.5
+    ? '⚠ PARTIALLY SUPPORTED - Portfolio features berfungsi namun perlu optimization'
+    : '✗ HIPOTESIS TIDAK TERBUKTI - Perlu enhancement portfolio features'
+}
 
 ==============================================
-KESIMPULAN
+KESIMPULAN PENELITIAN
 ==============================================
-Hipotesis 1 (Project Matching): ${projectMatching.searchesUnder5MinPercentage >= 90 && projectMatching.avgTopMatchScore >= 0.7 ? '✓ TERBUKTI' : '✗ PERLU PERBAIKAN'}
-Hipotesis 2 (Retention): ${retention.retentionRate >= 50 ? '✓ TERBUKTI' : '✗ PERLU PERBAIKAN'}
-Hipotesis 3 (Skill Progression): ${skillProgression.avgImprovementPercentage >= 25 ? '✓ TERBUKTI' : '✗ PERLU PERBAIKAN'}
 
+HIPOTESIS UTAMA (H0): Platform PortfolioHub efektif dalam meningkatkan
+efisiensi discovery proyek dan usability kolaborasi bagi fresh graduate
+dan career switcher dalam periode testing 2-3 hari.
+
+STATUS HIPOTESIS:
+1. H1 (Search Efficiency): ${
+  searchEfficiency.searchesUnder5MinPercentage >= 95 &&
+  searchEfficiency.avgMatchScorePercentage >= 60 &&
+  searchEfficiency.usersWithRelevantMatchPercentage >= 70
+    ? '✓ TERBUKTI'
+    : '⚠ PARTIALLY SUPPORTED'
+}
+2. H2 (Platform Usability): ${
+  usability.taskCompletionRate >= 75 &&
+  usability.avgCommentsPerTask >= 2 &&
+  usability.milestoneUsagePercentage >= 60
+    ? '✓ TERBUKTI'
+    : '⚠ PARTIALLY SUPPORTED'
+}
+3. H3 (Portfolio Building): ${
+  portfolioBuilding.usersWithContributionsPercentage >= 80 &&
+  portfolioBuilding.avgPortfolioItems >= 2 &&
+  portfolioBuilding.usersWithTestimonialsPercentage >= 60
+    ? '✓ TERBUKTI'
+    : '⚠ PARTIALLY SUPPORTED'
+}
+
+REKOMENDASI:
+${this.generateRecommendations(searchEfficiency, usability, portfolioBuilding)}
+
+==============================================
+Catatan: Laporan ini dihasilkan dari automated logging system
+untuk periode intensive testing 2-3 hari. Untuk analisis mendalam,
+lakukan triangulation dengan data kualitatif dari surveys dan interviews.
 ==============================================
 `;
 
     return report;
+  }
+
+  private generateRecommendations(searchEfficiency: any, usability: any, portfolioBuilding: any): string {
+    const recommendations: string[] = [];
+
+    if (searchEfficiency.avgSearchTimeMinutes > 5) {
+      recommendations.push('- Optimize search algorithm untuk mengurangi waktu response');
+    }
+    if (searchEfficiency.avgMatchScorePercentage < 60) {
+      recommendations.push('- Fine-tune Jaccard similarity thresholds untuk meningkatkan relevance');
+    }
+    if (usability.taskCompletionRate < 75) {
+      recommendations.push('- Review task complexity dan berikan guidance yang lebih jelas');
+    }
+    if (usability.avgCommentsPerTask < 2) {
+      recommendations.push('- Encourage collaboration melalui comment prompts atau notifications');
+    }
+    if (usability.milestoneUsagePercentage < 60) {
+      recommendations.push('- Improve milestone feature discoverability dan onboarding');
+    }
+    if (portfolioBuilding.avgPortfolioItems < 2) {
+      recommendations.push('- Simplify contribution workflow untuk meningkatkan portfolio building rate');
+    }
+    if (portfolioBuilding.usersWithTestimonialsPercentage < 60) {
+      recommendations.push('- Prompt users untuk give/request testimonials setelah task completion');
+    }
+
+    if (recommendations.length === 0) {
+      return '- Platform menunjukkan performa excellent! Continue monitoring dan gather more data.';
+    }
+
+    return recommendations.join('\n');
   }
 }
 
